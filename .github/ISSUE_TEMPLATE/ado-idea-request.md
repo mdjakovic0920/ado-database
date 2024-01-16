@@ -37,7 +37,3 @@ assignees: ''
 
 
 **Credits/Associations - Is this ADO based upon a previous project or ADO or in partnership with any other groups or developers? If so, please list here.**
-
-
-
-**Are there any other ADOs that this ADO should work with or in conjunction with?**
