@@ -1,5 +1,5 @@
 ---
-name: ADO Idea Request
+name: ADO Idea Proposal
 about: Tell us about your idea for a new ADO.
 title: ''
 labels: ADO Request
