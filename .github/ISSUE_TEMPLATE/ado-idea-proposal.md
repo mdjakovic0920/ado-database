@@ -24,11 +24,11 @@ assignees: ''
 
 **ADO Flow Breakdown - Please list and provide descriptions of each step in the ADO flow sequence (show us how to work with the ADO and associated workflow, visuals are great here):**
 
-**Instantiation - What is defined when instantiating the ADO**
+Instantiation - What is defined when instantiating the ADO:
 
-**Execution - After instantiation, what is the process for working with the ADO**
+Execution - After instantiation, what is the process for working with the ADO:
 
-**Queries - What type of information will you need to include, search upon:**
+Queries - What type of information will you need to include, search upon:
 
 **Considerations/Concerns - What factors should be considered to mitigate risk of misuse, abuse, or other unintended scenarios, if any?**
 
