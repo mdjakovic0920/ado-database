@@ -13,12 +13,13 @@ assignees: ''
 - Name:
 - Discord:
 - Email Address:
+- Github: 
 
 **Contract Summary(Details of the contract and specific functionality to be included)**
 
 **External Reference Links(Link to something that might provide additional information about this ADO and its use cases if applicable)**
 
-**Contract Flow Breakdown(Step by step explanation of how the ADO from start to finish)**
+**Contract Flow Breakdown(Step by step explanation of how the ADO from start to finish. Workflow diagram is encouraged)**
 
 1.
 2.
@@ -42,28 +43,32 @@ assignees: ''
 2.
 3.
 
-**Cargo Dependencies Used**
--
--
--
--
+---
 
 **Possible Next Iterations/Future Work**
 
 
-**Possible Concers/Risks**
+**Possible Concers/Risks (Security,speed,safety,logic)**
 
 
-**Other ADO’s to Pair With (Does this ADO work with another in the ALL? If so, which and how)**
-
-
-**Compatibility(Is this ADO compatible to all chains that use Andromeda or is it compatible to some chain only)**
-
+**Other ADO’s to Pair With (Does this ADO work with another existing ADO? If so, which and how? Does it need to be part of an App?)**
 
 **Credits/Associations(Is this ADO inspired by another from the ecosystem? Was it prepared with another partnering group or developers?)**
 
+### Dependencies
 
-**Third Pary Integrations(Does this ADO require any third party integrations such as oracles,protocols,specific wallet, or anything off chain )**
+**Cargo Dependencies Used**
+
+-
+-
+-
+-
+
+**Third Pary Dependencies(Does this ADO require any third party integrations such as oracles,protocols,specific wallet, or anything off chain)**
+
+**Compatibility(To which chains is the ADO compatable. List the included and excluded chains)**
+
+---
 
 ## Additional Sections/Material Needed 
 
