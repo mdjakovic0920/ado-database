@@ -11,3 +11,6 @@ To request a new feature for an existing ADO, create a new [Issue](https://githu
 
 **Note**
 For a submission to be valid, please fill in the templates completely as all the sections are required.
+
+## Submitting an ADO to be added to the Andromeda library
+To submit a created ADO to be added to our library of ADOs, create a new [Issue](https://github.com/andromedaprotocol/ado-database/issues/new/choose) and use the ADO Submission template.
