@@ -25,6 +25,8 @@ assignees: ''
 2.
 3.
 
+**Under what [category](https://github.com/andromedaprotocol/andromeda-core/tree/development/contracts) would you include the ADO(non-fungible-tokens, finance, ecosystem etc..)**
+
 ### Messages
 
 **Instantiation (What is specified and stored at instantiation)**
@@ -66,7 +68,7 @@ assignees: ''
 
 **Third Pary Dependencies(Does this ADO require any third party integrations such as oracles,protocols,specific wallet, or anything off chain)**
 
-**Compatibility(To which chains is the ADO compatable. List the included and excluded chains)**
+**Compatibility(To which chains is the ADO compatable. List the included and excluded chains. Does it require a specific sdk module? If so specify.)**
 
 ---
 
@@ -75,6 +77,9 @@ assignees: ''
 Make sure you have the following in your PR:
 
 1. Clear and neat ReadMe file that includes a summary of the ADO and documentation on how to use it
-2. ADO should contain unit tests (That pass) for all messages in the contract
+2. ADO should contain unit tests. Testing should cover both positive and negative testing with 90% coverage. Any additional testing (on-chain or other) is also encouraged but not required.
 3. ADO should contain an updated schema file ([Schema generation crate](https://crates.io/crates/cosmwasm-schema))
 
+## Usage Guide
+
+Provide a full exmample of the ADO usage. Include the messages called and the JSON used to call these messages. 
