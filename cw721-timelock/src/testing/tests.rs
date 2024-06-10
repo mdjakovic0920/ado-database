@@ -1,13 +1,13 @@
 use cosmwasm_std::{
     Addr, QueryRequest, Attribute,
-    testing::{mock_env, mock_info, mock_dependencies},
-    WasmQuery, to_json_binary, from_json, Querier, Empty
+    testing::{mock_env, mock_info},
+    WasmQuery, to_json_binary, from_json, Querier,
 };
 use cw721::{Cw721QueryMsg, OwnerOfResponse, Cw721ReceiveMsg};
 use crate::{
     contract::{instantiate, execute, query},
-    msg::{InstantiateMsg, ExecuteMsg, QueryMsg, UnlockTimeResponse, NftDetailsResponse, TokenExtension, Cw721HookMsg},
-    testing::mock_querier::{MOCK_CW721_CONTRACT, MOCK_TOKEN_OWNER, MOCK_UNCLAIMED_TOKEN, mock_dependencies_custom}
+    msg::{InstantiateMsg, ExecuteMsg, QueryMsg, UnlockTimeResponse, NftDetailsResponse, Cw721HookMsg},
+    testing::mock_querier::{MOCK_CW721_CONTRACT, MOCK_TOKEN_OWNER, mock_dependencies_custom}
 };
 use andromeda_std::{
     common::encode_binary, 
@@ -16,7 +16,6 @@ use andromeda_std::{
     common::{milliseconds::MillisecondsDuration},
     amp::{AndrAddr, Recipient},
 };
-use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg};
 
 #[test]
 fn test_instantiate() {

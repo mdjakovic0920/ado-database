@@ -1,6 +1,4 @@
 use cosmwasm_std::{Addr};
-// use cosmwasm_storage::{Bucket, ReadonlyBucket, singleton, singleton_read, Singleton};
-// use schemars::JsonSchema;
 use cosmwasm_schema::cw_serde;
 use cw_storage_plus::Map;
 
