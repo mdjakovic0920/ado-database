@@ -16,7 +16,7 @@ use andromeda_std::{
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 
 // use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, UnlockTimeResponse, NftDetailsResponse };
-use crate::msg::{ ExecuteMsg, InstantiateMsg, Cw721HookMsg };
+use crate::msg::{ ExecuteMsg, InstantiateMsg, Cw721HookMsg, UnlockTimeResponse, NftDetailsResponse, QueryMsg };
 
 use crate::state::{TIMELOCKS, TimelockInfo};
 
@@ -99,7 +99,11 @@ pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Respon
 
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
-        _ => ADOContract::default().execute(ctx, msg,)
+        ExecuteMsg::ClaimNft {
+            cw721_contract,
+            token_id,
+        } => execute_claim_cw721(ctx, cw721_contract, token_id),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
@@ -144,11 +148,11 @@ fn execute_timelock_cw721(
     } = ctx;
 
     ensure!(
-        !lock_duration.seconds() > 24 * 60 * 60,
+        lock_duration.seconds() > 24 * 60 * 60,
         ContractError::LockTimeTooShort {}
     );
     ensure!(
-        !lock_duration.seconds() < 365* 24 * 60 * 60,
+        lock_duration.seconds() < 365* 24 * 60 * 60,
         ContractError::LockTimeTooLong {}
     );
 
@@ -171,140 +175,82 @@ fn execute_timelock_cw721(
     )
 }
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn execute(
-//     deps: DepsMut,
-//     env: Env,
-//     info: MessageInfo,
-//     msg: ExecuteMsg,
-// ) -> Result<Response, ContractError> {
-//     match msg {
-//         ExecuteMsg::SetTimelock { cw721_contract, token_id, unlock_time, recipient } => {
-//             try_set_timelock(deps, env, info, cw721_contract, token_id, unlock_time, recipient)
-//         },
-//         ExecuteMsg::Claim { cw721_contract, token_id } => try_claim_nft(deps, env, cw721_contract, token_id),
-//         _ => todo!(),
-//     }
-// }
+fn execute_claim_cw721(
+    ctx: ExecuteContext,
+    cw721_contract: AndrAddr,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        ..
+    } = ctx;
 
-// // Before call try_set_timelock, the owner of cw721 approve cw721-timelock as a spender.
-// pub fn try_set_timelock(
-//     deps: DepsMut,
-//     env: Env,
-//     _info: MessageInfo,
-//     cw721_contract: String,
-//     token_id: String,
-//     unlock_time: u64,
-//     recipient: String,
-// ) -> Result<Response, ContractError> {
+    let lock_id = format!("{}:{}", cw721_contract, token_id);
+    let timelock_info: Option<TimelockInfo> = Some(TIMELOCKS.load(deps.storage, lock_id.as_str())?);
 
-//     // let contract = ADOContract::default();
-//     // ensure!(
-//     //     contract.is_contract_owner(deps.storage, _info.sender.as_str())?,
-//     //     ContractError::Unauthorized {}
-//     // );
-//     // println!("Sender: {}", _info.sender.as_str());
-//     // let state = CONFIG.load(deps.storage)?;
-//     // if state.owner != info.sender {
-//     //     return Err(StdError::generic_err("Unauthorized"));
-//     // }
+    if let Some(timelock_info) = timelock_info {
+        if env.block.time.seconds() < timelock_info.unlock_time.seconds() {
+            return Err(ContractError::LockedNFT {});
+        }
 
-//     let recipient_addr = deps.api.addr_validate(&recipient)?;
-//     let timelock_info = TimelockInfo {
-//         unlock_time: env.block.time.seconds() + unlock_time,
-//         recipient: recipient_addr,
-//     };
+        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: cw721_contract.into_string().clone(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: AndrAddr::from_string(timelock_info.recipient.to_string()),
+                // recipient: timelock_info.recipient.to_string(),
+                token_id: token_id.clone(),
+            })?,
+            funds: vec![],
+        });
 
-//     let lock_id = format!("{}:{}", cw721_contract, token_id);
-//     TIMELOCKS.save(deps.storage, lock_id.as_str(), &timelock_info)?;
+        TIMELOCKS.remove(deps.storage, lock_id.as_str());
 
-//     let send_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-//         contract_addr: cw721_contract.clone(),
-//         msg: encode_binary(&Cw721ExecuteMsg::SendNft {
-//             contract: AndrAddr::from_string(env.contract.address.to_string()),
-//             token_id: token_id.clone(),
-//             msg: Binary::from_base64("")?,
-//         })?,
-//         funds: vec![],
-//     });
+        Ok(Response::new()
+            .add_message(transfer_msg)
+            .add_attribute("method", "claim_nft")
+        )
+    } else {
+        // Return a custom error if the timelock_info does not exist
+        Err(ContractError::NFTNotFound {})
+    }
+}
 
-//     Ok(
-//         Response::new()
-//         .add_message(send_msg)
-//         .add_attribute("method", "set_timelock")
-//     )
-// }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(
+    deps: Deps,
+    _env: Env,
+    msg: QueryMsg,
+) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::UnlockTime { cw721_contract, token_id } => encode_binary(&query_unlock_time(deps, cw721_contract, token_id)?),
+        QueryMsg::NftDetails { cw721_contract, token_id } => encode_binary(&query_nft_details(deps, cw721_contract, token_id)?),
+        _ => todo!(),
+    }
+}
 
-// pub fn try_claim_nft(
-//     deps: DepsMut,
-//     env: Env,
-//     cw721_contract: String,
-//     token_id: String,
-// ) -> Result<Response, ContractError> {
-//     let lock_id = format!("{}:{}", cw721_contract, token_id);
-//     let timelock_info: Option<TimelockInfo> = Some(TIMELOCKS.load(deps.storage, lock_id.as_str())?);
+fn query_unlock_time(
+    deps: Deps,
+    cw721_contract: AndrAddr,
+    token_id: String,
+) -> Result<UnlockTimeResponse, ContractError> {
+    let lock_id = format!("{}:{}", cw721_contract.into_string(), token_id);
+    let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+    Ok(UnlockTimeResponse {
+        unlock_time: timelock.unlock_time.seconds(),
+    })
+}
 
-//     if let Some(timelock_info) = timelock_info {
-//         if env.block.time.seconds() < timelock_info.unlock_time {
-//             return Err(ContractError::LockedNFT {});
-//         }
-
-//         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-//             contract_addr: cw721_contract.clone(),
-//             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-//                 recipient: AndrAddr::from_string(timelock_info.recipient.to_string()),
-//                 // recipient: timelock_info.recipient.to_string(),
-//                 token_id: token_id.clone(),
-//             })?,
-//             funds: vec![],
-//         });
-
-//         TIMELOCKS.remove(deps.storage, lock_id.as_str());
-
-//         Ok(Response::new()
-//             .add_message(transfer_msg)
-//             .add_attribute("method", "claim_nft")
-//         )
-//     } else {
-//         // Return a custom error if the timelock_info does not exist
-//         Err(ContractError::NFTNotFound {})
-//     }
-// }
-
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn query(
-//     deps: Deps,
-//     _env: Env,
-//     msg: QueryMsg,
-// ) -> Result<Binary, ContractError> {
-//     match msg {
-//         QueryMsg::UnlockTime { cw721_contract, token_id } => encode_binary(&query_unlock_time(deps, cw721_contract, token_id)?),
-//         QueryMsg::NftDetails { cw721_contract, token_id } => encode_binary(&query_nft_details(deps, cw721_contract, token_id)?),
-//         _ => todo!(),
-//     }
-// }
-
-// fn query_unlock_time(
-//     deps: Deps,
-//     cw721_contract: String,
-//     token_id: String,
-// ) -> Result<UnlockTimeResponse, ContractError> {
-//     let lock_id = format!("{}:{}", cw721_contract, token_id);
-//     let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
-//     Ok(UnlockTimeResponse {
-//         unlock_time: timelock.unlock_time,
-//     })
-// }
-
-// fn query_nft_details(
-//     deps: Deps,
-//     cw721_contract: String,
-//     token_id: String,
-// ) -> Result<NftDetailsResponse, ContractError> {
-//     let lock_id = format!("{}:{}", cw721_contract, token_id);
-//     let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
-//     Ok(NftDetailsResponse {
-//         unlock_time: timelock.unlock_time,
-//         recipient: timelock.recipient,
-//     })
-// }
+fn query_nft_details(
+    deps: Deps,
+    cw721_contract: AndrAddr,
+    token_id: String,
+) -> Result<NftDetailsResponse, ContractError> {
+    let lock_id = format!("{}:{}", cw721_contract.into_string(), token_id);
+    let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+    Ok(NftDetailsResponse {
+        unlock_time: timelock.unlock_time.seconds(),
+        recipient: timelock.recipient,
+    })
+}

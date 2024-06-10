@@ -9,11 +9,6 @@ use andromeda_std::common::milliseconds::MillisecondsExpiration;
 // pub const CONFIG: Item<State> = Item::new("config");
 pub const TIMELOCKS: Map<&str, TimelockInfo> = Map::new("timelocks");
 
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// pub struct State {
-//     pub owner: Addr,
-// }
-
 #[cw_serde]
 pub struct TimelockInfo {
     pub unlock_time: MillisecondsExpiration,
