@@ -17,9 +17,8 @@ use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 use crate::msg::{ ExecuteMsg, InstantiateMsg, Cw721HookMsg, UnlockTimeResponse, NftDetailsResponse, QueryMsg };
 use crate::state::{TIMELOCKS, TimelockInfo};
 
-use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
+use cw721::Cw721ReceiveMsg;
 use cw2::set_contract_version;
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-timelock";
@@ -91,8 +90,7 @@ pub fn execute(
     }
 }
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    // let action = get_action_name(CONTRACT_NAME, msg.as_ref());
+pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
 
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
@@ -115,8 +113,6 @@ fn handle_receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Res
 
     match from_json(&msg.msg)? {
         Cw721HookMsg::TimelockNFT {
-            // cw721_contract,
-            // token_id,
             lock_duration,
             recipient,
         } => execute_timelock_cw721(
@@ -132,13 +128,13 @@ fn handle_receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Res
 #[allow(clippy::too_many_arguments)]
 fn execute_timelock_cw721(
     ctx: ExecuteContext,
-    sender: String,
+    _sender: String,
     token_id: String,
     lock_duration: MillisecondsDuration,
     recipient: Recipient,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
+        deps,
         info,
         env,
         ..
@@ -178,8 +174,7 @@ fn execute_claim_cw721(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        mut deps,
-        info,
+        deps,
         env,
         ..
     } = ctx;

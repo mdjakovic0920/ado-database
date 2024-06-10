@@ -5,7 +5,7 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{milliseconds::MillisecondsDuration},
 };
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
+use cw721::Cw721ReceiveMsg;
 
 #[andr_instantiate]
 #[cw_serde]
