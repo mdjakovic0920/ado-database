@@ -25,7 +25,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum Cw721HookMsg {
-    TimelockNFT {
+    TimelockNft {
         lock_duration: MillisecondsDuration,
         recipient: Recipient,
     }

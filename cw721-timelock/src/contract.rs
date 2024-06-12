@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, ensure, Response, CosmosMsg, WasmMsg, from_json, attr};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, ensure, Response, CosmosMsg, WasmMsg, from_json, attr, Empty};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, permissioning::Permission},
     ado_contract::{
@@ -112,7 +112,7 @@ fn handle_receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Res
     )?;
 
     match from_json(&msg.msg)? {
-        Cw721HookMsg::TimelockNFT {
+        Cw721HookMsg::TimelockNft {
             lock_duration,
             recipient,
         } => execute_timelock_cw721(
@@ -132,7 +132,7 @@ fn execute_timelock_cw721(
     token_id: String,
     lock_duration: MillisecondsDuration,
     recipient: Recipient,
-) -> Result<Response, ContractError> {
+) -> Result<Response<Empty>, ContractError> {
     let ExecuteContext {
         deps,
         info,
@@ -141,11 +141,11 @@ fn execute_timelock_cw721(
     } = ctx;
 
     ensure!(
-        lock_duration.seconds() > 24 * 60 * 60,
+        lock_duration.seconds() >= 24 * 60 * 60,
         ContractError::LockTimeTooShort {}
     );
     ensure!(
-        lock_duration.seconds() < 365* 24 * 60 * 60,
+        lock_duration.seconds() <= 365* 24 * 60 * 60,
         ContractError::LockTimeTooLong {}
     );
 
@@ -172,7 +172,7 @@ fn execute_claim_cw721(
     ctx: ExecuteContext,
     cw721_contract: AndrAddr,
     token_id: String,
-) -> Result<Response, ContractError> {
+) -> Result<Response<Empty>, ContractError> {
     let ExecuteContext {
         deps,
         env,
@@ -212,13 +212,13 @@ fn execute_claim_cw721(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(
     deps: Deps,
-    _env: Env,
+    env: Env,
     msg: QueryMsg,
 ) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::UnlockTime { cw721_contract, token_id } => encode_binary(&query_unlock_time(deps, cw721_contract, token_id)?),
         QueryMsg::NftDetails { cw721_contract, token_id } => encode_binary(&query_nft_details(deps, cw721_contract, token_id)?),
-        _ => todo!(),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
