@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use andromeda_std::{
     andr_exec, andr_instantiate, andr_query,
-    amp::{AndrAddr, Recipient},
+    amp::AndrAddr,
     common::{milliseconds::MillisecondsDuration},
 };
 use cw721::Cw721ReceiveMsg;
@@ -27,7 +27,7 @@ pub enum ExecuteMsg {
 pub enum Cw721HookMsg {
     TimelockNft {
         lock_duration: MillisecondsDuration,
-        recipient: Recipient,
+        recipient: AndrAddr,
     }
 }
 

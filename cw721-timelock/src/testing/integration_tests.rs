@@ -11,7 +11,7 @@ use cw721_base::MinterResponse;
 
 use andromeda_std::{
     common::{milliseconds::MillisecondsDuration, encode_binary},
-    amp::{AndrAddr, Recipient},
+    amp::AndrAddr,
 };
 
 fn mock_app() -> App {
@@ -112,7 +112,7 @@ fn cw721_timelock_test() {
 
     let hook_msg = TimelockNft {
         lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
-        recipient: Recipient::new(recipient.to_string(), None),
+        recipient: AndrAddr::from_string("recipient".to_string()),
     };
 
     let send_cw721_msg: cw721_base::msg::ExecuteMsg<Empty, Empty> = cw721_base::msg::ExecuteMsg::SendNft { 

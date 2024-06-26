@@ -3,14 +3,12 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, ensure, Response, CosmosMsg, WasmMsg, from_json, attr, Empty};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, permissioning::Permission},
-    ado_contract::{
-        ADOContract,
-    },
+    ado_contract::ADOContract,
     common::{
         encode_binary, milliseconds::MillisecondsDuration, milliseconds::Milliseconds, context::ExecuteContext,
     },
     error::ContractError,
-    amp::{AndrAddr, Recipient},
+    amp::AndrAddr,
 };
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 
@@ -131,7 +129,7 @@ fn execute_timelock_cw721(
     _sender: String,
     token_id: String,
     lock_duration: MillisecondsDuration,
-    recipient: Recipient,
+    recipient: AndrAddr,
 ) -> Result<Response<Empty>, ContractError> {
     let ExecuteContext {
         deps,
@@ -152,7 +150,7 @@ fn execute_timelock_cw721(
     let nft_address = info.sender.to_string();
     let lock_id = format!("{}:{}", nft_address, token_id);
 
-    let recipient_addr = deps.api.addr_validate(&recipient.get_addr())?;
+    let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
     let timelock_info = TimelockInfo {
         unlock_time: Milliseconds::from_seconds(env.block.time.seconds() + lock_duration.seconds()),
         recipient: recipient_addr,
