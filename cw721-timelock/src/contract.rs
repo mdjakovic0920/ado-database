@@ -8,7 +8,7 @@ use andromeda_std::{
         encode_binary, milliseconds::MillisecondsDuration, milliseconds::Milliseconds, context::ExecuteContext,
     },
     error::ContractError,
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
 };
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 
@@ -129,7 +129,7 @@ fn execute_timelock_cw721(
     _sender: String,
     token_id: String,
     lock_duration: MillisecondsDuration,
-    recipient: AndrAddr,
+    recipient: Recipient,
 ) -> Result<Response<Empty>, ContractError> {
     let ExecuteContext {
         deps,
@@ -150,7 +150,7 @@ fn execute_timelock_cw721(
     let nft_address = info.sender.to_string();
     let lock_id = format!("{}:{}", nft_address, token_id);
 
-    let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+    let recipient_addr = AndrAddr::from_string(recipient.get_addr()).get_raw_address(&deps.as_ref())?;
     let timelock_info = TimelockInfo {
         unlock_time: Milliseconds::from_seconds(env.block.time.seconds() + lock_duration.seconds()),
         recipient: recipient_addr,

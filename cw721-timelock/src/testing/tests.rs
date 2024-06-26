@@ -14,7 +14,7 @@ use andromeda_std::{
     testing::mock_querier::MOCK_KERNEL_CONTRACT, 
     error::ContractError, 
     common::{milliseconds::MillisecondsDuration},
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
 };
 
 #[test]
@@ -70,7 +70,7 @@ fn test_timelock_cw721() {
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
-            recipient: AndrAddr::from_string("recipient".to_string()),
+            recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
 
@@ -108,7 +108,7 @@ fn test_claim_cw721() {
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
-            recipient: AndrAddr::from_string("recipient".to_string()),
+            recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
 
@@ -166,7 +166,7 @@ fn test_too_short_lock_duration() {
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(24 * 60 * 60 / 2),
-            recipient: AndrAddr::from_string("recipient".to_string()),
+            recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
 
@@ -192,7 +192,7 @@ fn test_too_long_lock_duration() {
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(2 * 365* 24 * 60 * 60),
-            recipient: AndrAddr::from_string("recipient".to_string()),
+            recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
 
@@ -218,7 +218,7 @@ fn test_locked_nft() {
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
-            recipient: AndrAddr::from_string("recipient".to_string()),
+            recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
 
@@ -259,7 +259,7 @@ fn test_query_nft_details() {
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
-            recipient: AndrAddr::from_string("recipient".to_string()),
+            recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
 
@@ -296,7 +296,7 @@ fn test_query_unlocktime() {
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
-            recipient: AndrAddr::from_string("recipient".to_string()),
+            recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
 
