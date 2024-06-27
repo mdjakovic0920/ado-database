@@ -6,7 +6,7 @@ use cosmwasm_std::{
 use cw721::{Cw721QueryMsg, OwnerOfResponse, Cw721ReceiveMsg};
 use crate::{
     contract::{instantiate, execute, query},
-    msg::{InstantiateMsg, ExecuteMsg, QueryMsg, UnlockTimeResponse, NftDetailsResponse, Cw721HookMsg},
+    msg::{InstantiateMsg, ExecuteMsg, QueryMsg, UnlockTimeResponse, NftDetailsResponse, Cw721HookMsg, IsLockedResponse},
     testing::mock_querier::{MOCK_CW721_CONTRACT, MOCK_TOKEN_OWNER, mock_dependencies_custom}
 };
 use andromeda_std::{
@@ -16,6 +16,9 @@ use andromeda_std::{
     common::{milliseconds::MillisecondsDuration},
     amp::{AndrAddr, Recipient},
 };
+
+const ONE_DAY: u64 = 24 * 60 * 60;
+const ONE_YEAR: u64 = 365 * 24 * 60 * 60;
 
 #[test]
 fn test_instantiate() {
@@ -69,7 +72,7 @@ fn test_timelock_cw721() {
         sender: MOCK_CW721_CONTRACT.to_string(),
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
-            lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
+            lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
@@ -87,7 +90,7 @@ fn test_timelock_cw721() {
             }
         ).unwrap()
     ).unwrap();
-    assert_eq!(query_res.unlock_time, env.block.time.seconds() + 3 * 24 * 60 * 60);
+    assert_eq!(query_res.unlock_time, env.block.time.seconds() + 3 * ONE_DAY);
 }
 
 #[test]
@@ -107,7 +110,7 @@ fn test_claim_cw721() {
         sender: MOCK_TOKEN_OWNER.to_string(),
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
-            lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
+            lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
@@ -165,7 +168,7 @@ fn test_too_short_lock_duration() {
         sender: MOCK_TOKEN_OWNER.to_string(),
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
-            lock_duration: MillisecondsDuration::from_seconds(24 * 60 * 60 / 2),
+            lock_duration: MillisecondsDuration::from_seconds(ONE_DAY / 2),
             recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
@@ -191,7 +194,7 @@ fn test_too_long_lock_duration() {
         sender: MOCK_TOKEN_OWNER.to_string(),
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
-            lock_duration: MillisecondsDuration::from_seconds(2 * 365* 24 * 60 * 60),
+            lock_duration: MillisecondsDuration::from_seconds(2 * ONE_YEAR),
             recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
@@ -217,7 +220,7 @@ fn test_locked_nft() {
         sender: MOCK_TOKEN_OWNER.to_string(),
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
-            lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
+            lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
@@ -230,7 +233,7 @@ fn test_locked_nft() {
 
     // Fast forward time
     let mut env_claim = mock_env();
-    env_claim.block.time = env.block.time.plus_seconds(2 * 24 * 60 * 60);
+    env_claim.block.time = env.block.time.plus_seconds(2 * ONE_DAY);
 
     let claim_msg = ExecuteMsg::ClaimNft {
         cw721_contract: AndrAddr::from_string(MOCK_CW721_CONTRACT.to_string()),
@@ -258,7 +261,7 @@ fn test_query_nft_details() {
         sender: MOCK_TOKEN_OWNER.to_string(),
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
-            lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
+            lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
@@ -274,7 +277,7 @@ fn test_query_nft_details() {
         &query(deps.as_ref(), env.clone(), query_msg).unwrap()
     ).unwrap();
 
-    assert_eq!(res.unlock_time, env.block.time.seconds() + 3 * 24 * 60 * 60);
+    assert_eq!(res.unlock_time, env.block.time.seconds() + 3 * ONE_DAY);
     assert_eq!(res.recipient, Addr::unchecked("recipient"));
 }
 
@@ -295,7 +298,7 @@ fn test_query_unlocktime() {
         sender: MOCK_TOKEN_OWNER.to_string(),
         token_id: "token1".to_string(),
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
-            lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
+            lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
         }).unwrap(),
     });
@@ -310,5 +313,44 @@ fn test_query_unlocktime() {
         &query(deps.as_ref(), env.clone(), query_msg).unwrap()
     ).unwrap();
 
-    assert_eq!(res.unlock_time, env.block.time.seconds() + 3 * 24 * 60 * 60);
+    assert_eq!(res.unlock_time, env.block.time.seconds() + 3 * ONE_DAY);
+}
+
+#[test]
+fn test_query_is_locked() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        kernel_address: MOCK_CW721_CONTRACT.to_string(),
+        owner: Some("creator".to_owned()),
+        authorized_token_addresses: None,
+    };
+    let info = mock_info(MOCK_CW721_CONTRACT, &[]);
+    let env = mock_env();
+
+    instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let timelock_cw721_msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
+        sender: MOCK_TOKEN_OWNER.to_string(),
+        token_id: "token1".to_string(),
+        msg: encode_binary(&Cw721HookMsg::TimelockNft {
+            lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
+            recipient: Recipient::new("recipient", None),
+        }).unwrap(),
+    });
+
+    execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
+
+    let mut env_claim = mock_env();
+    env_claim.block.time = env.block.time.plus_seconds(2 * ONE_DAY);
+
+    let query_msg = QueryMsg::IsLocked {
+        cw721_contract: AndrAddr::from_string(MOCK_CW721_CONTRACT.to_string()),
+        token_id: "token1".to_string(),
+    };
+
+    let res: IsLockedResponse = from_json(
+        &query(deps.as_ref(), env.clone(), query_msg).unwrap()
+    ).unwrap();
+
+    assert_eq!(res.is_locked, true);
 }

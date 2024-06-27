@@ -14,6 +14,8 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
 };
 
+const ONE_DAY: u64 = 24 * 60 * 60;
+
 fn mock_app() -> App {
     App::default()
 }
@@ -111,7 +113,7 @@ fn cw721_timelock_test() {
     assert_eq!(origin_cw721_owner.to_string(), owner_res.owner);
 
     let hook_msg = TimelockNft {
-        lock_duration: MillisecondsDuration::from_seconds(3 * 24 * 60 * 60),
+        lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
         recipient: Recipient::new(recipient.to_string(), None),
     };
 
@@ -122,7 +124,7 @@ fn cw721_timelock_test() {
     };
 
     let env = mock_env();
-    let expected_unlock_time = env.block.time.seconds() + 3 * 24 * 60 * 60;
+    let expected_unlock_time = env.block.time.seconds() + 3 * ONE_DAY;
 
     router.execute_contract(origin_cw721_owner.clone(), cw721_addr.clone(), &send_cw721_msg, &[]).unwrap();
 
@@ -155,7 +157,7 @@ fn cw721_timelock_test() {
     };
 
     router.update_block(|block| {
-        block.time = block.time.plus_seconds(2 * 24 * 60 * 60);
+        block.time = block.time.plus_seconds(2 * ONE_DAY);
     });
 
     // Attempt to claim before unlock time and expect an error
@@ -164,7 +166,7 @@ fn cw721_timelock_test() {
     assert_eq!(err_res.to_string(), err_str.to_string());
 
     router.update_block(|block| {
-        block.time = block.time.plus_seconds(3 * 24 * 60 * 60);
+        block.time = block.time.plus_seconds(3 * ONE_DAY);
     });
 
     // Attempt to claim after unlock time

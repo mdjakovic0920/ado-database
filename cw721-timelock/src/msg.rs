@@ -45,6 +45,11 @@ pub enum QueryMsg {
         cw721_contract: AndrAddr,
         token_id: String,
     },
+    #[returns(IsLockedResponse)]
+    IsLocked {
+        cw721_contract: AndrAddr,
+        token_id: String,
+    }
 }
 
 #[cw_serde]
@@ -56,6 +61,11 @@ pub struct UnlockTimeResponse {
 pub struct NftDetailsResponse {
     pub unlock_time: u64,
     pub recipient: Addr,
+}
+
+#[cw_serde]
+pub struct IsLockedResponse {
+    pub is_locked: bool,
 }
 
 #[cw_serde]

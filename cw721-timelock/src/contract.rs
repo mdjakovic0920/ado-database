@@ -12,7 +12,7 @@ use andromeda_std::{
 };
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 
-use crate::msg::{ ExecuteMsg, InstantiateMsg, Cw721HookMsg, UnlockTimeResponse, NftDetailsResponse, QueryMsg };
+use crate::msg::{ ExecuteMsg, InstantiateMsg, Cw721HookMsg, UnlockTimeResponse, NftDetailsResponse, IsLockedResponse, QueryMsg };
 use crate::state::{TIMELOCKS, TimelockInfo};
 
 use cw721::Cw721ReceiveMsg;
@@ -21,8 +21,10 @@ use cw2::set_contract_version;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-timelock";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 const SEND_NFT_ACTION: &str = "SEND_NFT";
+
+const ONE_DAY: u64 = 24 * 60 * 60;
+const ONE_YEAR: u64 = 365 * 24 * 60 * 60;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -139,11 +141,11 @@ fn execute_timelock_cw721(
     } = ctx;
 
     ensure!(
-        lock_duration.seconds() >= 24 * 60 * 60,
+        lock_duration.seconds() >= ONE_DAY,
         ContractError::LockTimeTooShort {}
     );
     ensure!(
-        lock_duration.seconds() <= 365* 24 * 60 * 60,
+        lock_duration.seconds() <= ONE_YEAR,
         ContractError::LockTimeTooLong {}
     );
 
@@ -216,6 +218,7 @@ pub fn query(
     match msg {
         QueryMsg::UnlockTime { cw721_contract, token_id } => encode_binary(&query_unlock_time(deps, cw721_contract, token_id)?),
         QueryMsg::NftDetails { cw721_contract, token_id } => encode_binary(&query_nft_details(deps, cw721_contract, token_id)?),
+        QueryMsg::IsLocked { cw721_contract, token_id } => encode_binary(&query_is_locked(deps, env, cw721_contract, token_id)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -242,5 +245,22 @@ fn query_nft_details(
     Ok(NftDetailsResponse {
         unlock_time: timelock.unlock_time.seconds(),
         recipient: timelock.recipient,
+    })
+}
+
+fn query_is_locked(
+    deps: Deps,
+    env: Env,
+    cw721_contract: AndrAddr,
+    token_id: String,
+) -> Result<IsLockedResponse, ContractError> {
+    let lock_id = format!("{}:{}", cw721_contract.into_string(), token_id);
+    let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+    let unlock_time = timelock.unlock_time.seconds();
+    let current_time = env.block.time.seconds();
+    let is_locked = unlock_time > current_time;
+
+    Ok(IsLockedResponse {
+        is_locked,
     })
 }
