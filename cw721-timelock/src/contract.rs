@@ -179,7 +179,7 @@ fn execute_claim_cw721(
         ..
     } = ctx;
 
-    let lock_id = format!("{}:{}", cw721_contract, token_id);
+    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps.as_ref())?, token_id);
     let timelock_info: Option<TimelockInfo> = Some(TIMELOCKS.load(deps.storage, lock_id.as_str())?);
 
     if let Some(timelock_info) = timelock_info {
@@ -188,10 +188,9 @@ fn execute_claim_cw721(
         }
 
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: cw721_contract.into_string().clone(),
+            contract_addr: cw721_contract.get_raw_address(&deps.as_ref())?.into_string(),
             msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: AndrAddr::from_string(timelock_info.recipient.to_string()),
-                // recipient: timelock_info.recipient.to_string(),
                 token_id: token_id.clone(),
             })?,
             funds: vec![],
@@ -228,8 +227,9 @@ fn query_unlock_time(
     cw721_contract: AndrAddr,
     token_id: String,
 ) -> Result<UnlockTimeResponse, ContractError> {
-    let lock_id = format!("{}:{}", cw721_contract.into_string(), token_id);
+    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps)?, token_id);
     let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+    
     Ok(UnlockTimeResponse {
         unlock_time: timelock.unlock_time.seconds(),
     })
@@ -240,8 +240,9 @@ fn query_nft_details(
     cw721_contract: AndrAddr,
     token_id: String,
 ) -> Result<NftDetailsResponse, ContractError> {
-    let lock_id = format!("{}:{}", cw721_contract.into_string(), token_id);
+    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps)?, token_id);
     let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+
     Ok(NftDetailsResponse {
         unlock_time: timelock.unlock_time.seconds(),
         recipient: timelock.recipient,
@@ -254,7 +255,7 @@ fn query_is_locked(
     cw721_contract: AndrAddr,
     token_id: String,
 ) -> Result<IsLockedResponse, ContractError> {
-    let lock_id = format!("{}:{}", cw721_contract.into_string(), token_id);
+    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps)?, token_id);
     let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
     let unlock_time = timelock.unlock_time.seconds();
     let current_time = env.block.time.seconds();
