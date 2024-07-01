@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, ensure, Response, CosmosMsg, WasmMsg, from_json, attr, Empty};
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, permissioning::Permission},
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, permissioning::Permission, MigrateMsg},
     ado_contract::ADOContract,
     common::{
         encode_binary, milliseconds::MillisecondsDuration, milliseconds::Milliseconds, context::ExecuteContext,
@@ -264,4 +264,9 @@ fn query_is_locked(
     Ok(IsLockedResponse {
         is_locked,
     })
+}
+
+#[cfg_attr(not(feature = "imported"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
