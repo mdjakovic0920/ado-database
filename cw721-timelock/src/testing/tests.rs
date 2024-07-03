@@ -248,13 +248,8 @@ fn test_claim_non_existent_timelocked_nft() {
         token_id: "non_existent_token".to_string(),
     };
 
-    let claim_res = execute(deps.as_mut(), env.clone(), info.clone(), claim_msg);
-
-    // Check that the response is an error and matches the expected NFTNotFound error
-    match claim_res {
-        Err(ContractError::NFTNotFound {}) => {}
-        _ => panic!("Expected NFTNotFound error"),
-    }
+    let claim_res = execute(deps.as_mut(), env.clone(), info.clone(), claim_msg).unwrap_err();;
+    assert_eq!(claim_res, ContractError::NFTNotFound {});
 }
 
 #[test]
