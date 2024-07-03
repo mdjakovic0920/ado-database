@@ -180,32 +180,29 @@ fn execute_claim_cw721(
     } = ctx;
 
     let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps.as_ref())?, token_id);
-    let timelock_info: Option<TimelockInfo> = Some(TIMELOCKS.load(deps.storage, lock_id.as_str())?);
+    let timelock_info = TIMELOCKS.load(deps.storage, lock_id.as_str()).map_err(|_| ContractError::NFTNotFound {})?;
 
-    if let Some(timelock_info) = timelock_info {
-        if env.block.time.seconds() < timelock_info.unlock_time.seconds() {
-            return Err(ContractError::LockedNFT {});
-        }
-
-        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: cw721_contract.get_raw_address(&deps.as_ref())?.into_string(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: AndrAddr::from_string(timelock_info.recipient.to_string()),
-                token_id: token_id.clone(),
-            })?,
-            funds: vec![],
-        });
-
-        TIMELOCKS.remove(deps.storage, lock_id.as_str());
-
-        Ok(Response::new()
-            .add_message(transfer_msg)
-            .add_attribute("method", "claim_nft")
-        )
-    } else {
-        // Return a custom error if the timelock_info does not exist
-        Err(ContractError::NFTNotFound {})
+    if env.block.time.seconds() < timelock_info.unlock_time.seconds() {
+        return Err(ContractError::LockedNFT {});
     }
+
+    let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: cw721_contract.get_raw_address(&deps.as_ref())?.into_string(),
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: AndrAddr::from_string(timelock_info.recipient.to_string()),
+            token_id: token_id.clone(),
+        })?,
+        funds: vec![],
+    });
+
+    TIMELOCKS.remove(deps.storage, lock_id.as_str());
+
+    Ok(Response::new()
+        .add_message(transfer_msg)
+        .add_attribute("method", "claim_nft")
+        .add_attribute("token_id", token_id)
+        .add_attribute("recipient", timelock_info.recipient.to_string())
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

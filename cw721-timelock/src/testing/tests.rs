@@ -48,26 +48,6 @@ fn test_timelock_cw721() {
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    // Simulate the owner approving the timelock contract as an operator
-    // let approval_msg = Cw721ExecuteMsg::Approve {
-    //     spender: env.contract.address.to_string(),
-    //     token_id: "token1".to_string(),
-    //     expires: None,
-    // };
-
-    // let approval_info = mock_info(MOCK_TOKEN_OWNER, &[]);
-    // let approval_res = execute(deps.as_mut(), env.clone(), approval_info, ExecuteMsg::Cw721 {
-    //     contract_addr: MOCK_CW721_CONTRACT.to_string(),
-    //     msg: encode_binary(&approval_msg).unwrap(),
-    // }).unwrap();
-
-    // println!("Approval response: {:?}", approval_res);
-
-    // println!("Contract Address: {:?}", env.contract.address);
-
-
-    // let nft_contract = AndrCW721Contract::default();
-
     let timelock_cw721_msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_CW721_CONTRACT.to_string(),
         token_id: "token1".to_string(),
@@ -131,7 +111,11 @@ fn test_claim_cw721() {
     };
 
     let claim_res = execute(deps.as_mut(), env_claim.clone(), info.clone(), claim_msg).unwrap();
-    assert_eq!(claim_res.attributes, vec![("method", "claim_nft")]);
+    assert_eq!(claim_res.attributes, vec![
+        Attribute { key: "method".to_string(), value: "claim_nft".to_string() }, 
+        Attribute { key: "token_id".to_string(), value: "token1".to_string() }, 
+        Attribute { key: "recipient".to_string(), value: "recipient".to_string() },
+    ]);
 
     // Verify ownership transfer using raw_query
     let owner_query_msg = to_json_binary(&QueryRequest::<cosmwasm_std::Empty>::Wasm(WasmQuery::Smart {
@@ -242,6 +226,34 @@ fn test_locked_nft() {
 
     let claim_res = execute(deps.as_mut(), env_claim.clone(), info.clone(), claim_msg).unwrap_err();
     assert_eq!(claim_res, ContractError::LockedNFT {});
+}
+
+#[test]
+fn test_claim_non_existent_timelocked_nft() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let msg = InstantiateMsg {
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: Some("creator".to_owned()),
+        authorized_token_addresses: None,
+    };
+    let info = mock_info(MOCK_CW721_CONTRACT, &[]);
+    let env = mock_env();
+
+    instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // Attempt to claim a non-existent time-locked NFT
+    let claim_msg = ExecuteMsg::ClaimNft {
+        cw721_contract: AndrAddr::from_string(MOCK_CW721_CONTRACT.to_string()),
+        token_id: "non_existent_token".to_string(),
+    };
+
+    let claim_res = execute(deps.as_mut(), env.clone(), info.clone(), claim_msg);
+
+    // Check that the response is an error and matches the expected NFTNotFound error
+    match claim_res {
+        Err(ContractError::NFTNotFound {}) => {}
+        _ => panic!("Expected NFTNotFound error"),
+    }
 }
 
 #[test]
