@@ -149,8 +149,7 @@ fn execute_timelock_cw721(
         ContractError::LockTimeTooLong {}
     );
 
-    let nft_address = info.sender.to_string();
-    let lock_id = format!("{}:{}", nft_address, token_id);
+    let lock_id = (&info.sender, token_id.as_str());
 
     let recipient_addr = AndrAddr::from_string(recipient.get_addr()).get_raw_address(&deps.as_ref())?;
     let timelock_info = TimelockInfo {
@@ -158,12 +157,13 @@ fn execute_timelock_cw721(
         recipient: recipient_addr,
     };
 
-    TIMELOCKS.save(deps.storage, lock_id.as_str(), &timelock_info)?;
+    TIMELOCKS.save(deps.storage, lock_id, &timelock_info)?;
 
     Ok(Response::new()
         .add_attributes(vec![
             attr("method", "timelock_cw721"),
-            attr("lock_id", lock_id),
+            attr("contract_address", &info.sender.to_string()),
+            attr("token_id", token_id.clone())
         ])
     )
 }
@@ -179,8 +179,8 @@ fn execute_claim_cw721(
         ..
     } = ctx;
 
-    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps.as_ref())?, token_id);
-    let timelock_info = TIMELOCKS.load(deps.storage, lock_id.as_str()).map_err(|_| ContractError::NFTNotFound {})?;
+    let lock_id = (&cw721_contract.get_raw_address(&deps.as_ref())?, token_id.as_str());
+    let timelock_info = TIMELOCKS.load(deps.storage, lock_id).map_err(|_| ContractError::NFTNotFound {})?;
 
     if env.block.time.seconds() < timelock_info.unlock_time.seconds() {
         return Err(ContractError::LockedNFT {});
@@ -195,7 +195,7 @@ fn execute_claim_cw721(
         funds: vec![],
     });
 
-    TIMELOCKS.remove(deps.storage, lock_id.as_str());
+    TIMELOCKS.remove(deps.storage, lock_id);
 
     Ok(Response::new()
         .add_message(transfer_msg)
@@ -224,8 +224,8 @@ fn query_unlock_time(
     cw721_contract: AndrAddr,
     token_id: String,
 ) -> Result<UnlockTimeResponse, ContractError> {
-    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps)?, token_id);
-    let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+    let lock_id = (&cw721_contract.get_raw_address(&deps)?, token_id.as_str());
+    let timelock = TIMELOCKS.load(deps.storage, lock_id)?;
     
     Ok(UnlockTimeResponse {
         unlock_time: timelock.unlock_time.seconds(),
@@ -237,8 +237,8 @@ fn query_nft_details(
     cw721_contract: AndrAddr,
     token_id: String,
 ) -> Result<NftDetailsResponse, ContractError> {
-    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps)?, token_id);
-    let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+    let lock_id = (&cw721_contract.get_raw_address(&deps)?, token_id.as_str());
+    let timelock = TIMELOCKS.load(deps.storage, lock_id)?;
 
     Ok(NftDetailsResponse {
         unlock_time: timelock.unlock_time.seconds(),
@@ -252,8 +252,8 @@ fn query_is_locked(
     cw721_contract: AndrAddr,
     token_id: String,
 ) -> Result<IsLockedResponse, ContractError> {
-    let lock_id = format!("{}:{}", cw721_contract.get_raw_address(&deps)?, token_id);
-    let timelock = TIMELOCKS.load(deps.storage, lock_id.as_str())?;
+    let lock_id = (&cw721_contract.get_raw_address(&deps)?, token_id.as_str());
+    let timelock = TIMELOCKS.load(deps.storage, lock_id)?;
     let unlock_time = timelock.unlock_time.seconds();
     let current_time = env.block.time.seconds();
     let is_locked = unlock_time > current_time;

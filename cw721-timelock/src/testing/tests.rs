@@ -58,7 +58,11 @@ fn test_timelock_cw721() {
     });
 
     let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
-    assert_eq!(execute_res.attributes, vec![Attribute { key: "method".to_string(), value: "timelock_cw721".to_string() }, Attribute { key: "lock_id".to_string(), value: "cw721_contract:token1".to_string() }]);
+    assert_eq!(execute_res.attributes, vec![
+        Attribute { key: "method".to_string(), value: "timelock_cw721".to_string() }, 
+        Attribute { key: "contract_address".to_string(), value: "cw721_contract".to_string() },
+        Attribute { key: "token_id".to_string(), value: "token1".to_string() },
+    ]);
     // Verify the timelock has been set
     let query_res: UnlockTimeResponse = from_json(
         &query(
@@ -98,7 +102,8 @@ fn test_claim_cw721() {
     let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
     assert_eq!(execute_res.attributes, vec![
         Attribute { key: "method".to_string(), value: "timelock_cw721".to_string() }, 
-        Attribute { key: "lock_id".to_string(), value: "cw721_contract:token1".to_string() }
+        Attribute { key: "contract_address".to_string(), value: "cw721_contract".to_string() },
+        Attribute { key: "token_id".to_string(), value: "token1".to_string() },
     ]);
 
     // Fast forward time
@@ -209,11 +214,7 @@ fn test_locked_nft() {
         }).unwrap(),
     });
 
-    let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
-    assert_eq!(execute_res.attributes, vec![
-        Attribute { key: "method".to_string(), value: "timelock_cw721".to_string() }, 
-        Attribute { key: "lock_id".to_string(), value: "cw721_contract:token1".to_string() }
-    ]);
+    execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
 
     // Fast forward time
     let mut env_claim = mock_env();
