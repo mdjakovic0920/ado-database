@@ -1,7 +1,7 @@
 [package]
 name = "andromeda-wrapped-cw721"
 version = "0.1.0"
-authors = ["1pass-fi <charlesward19744@gmail.com>"]
+authors = ["mdjakovic0920 <mdjakovic0920@gmail.com>"]
 edition = "2021"
 rust-version = "1.78.0"
 
@@ -9,6 +9,17 @@ rust-version = "1.78.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
@@ -29,10 +40,10 @@ cw2 = { version = "1.1.2" }
 thiserror = { version = "1.0.61" }
 schemars = { version = "0.8.21" }
 
-andromeda-std = { default-features = false, version = "1.0.0" }
+andromeda-std = { version = "1.0.0-rc1" }
 andromeda-app = { version = "1.0.0" }
 andromeda-non-fungible-tokens = { version = "1.0.0" }
 andromeda-finance = { version = "1.0.0" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { version = "0.16.2" }
+cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_3"] }
