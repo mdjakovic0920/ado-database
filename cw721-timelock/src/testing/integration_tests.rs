@@ -1,17 +1,22 @@
 use crate::contract::{execute, instantiate, query};
-use crate::msg::{ExecuteMsg, InstantiateMsg, Cw721HookMsg::TimelockNft, QueryMsg, UnlockTimeResponse, NftDetailsResponse};
-use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+use crate::msg::{
+    Cw721HookMsg::TimelockNft, ExecuteMsg, InstantiateMsg, NftDetailsResponse, QueryMsg,
+    UnlockTimeResponse,
+};
 use andromeda_std::ado_base::ownership::ContractOwnerResponse;
-use cosmwasm_std::{Addr, Empty, testing::mock_env};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use anyhow::Error;
-use cw721_base::entry::{execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query};
+use cosmwasm_std::{testing::mock_env, Addr, Empty};
 use cw721::OwnerOfResponse;
+use cw721_base::entry::{
+    execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
+};
 use cw721_base::MinterResponse;
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use andromeda_std::{
-    common::{milliseconds::MillisecondsDuration, encode_binary},
     amp::{AndrAddr, Recipient},
+    common::{encode_binary, milliseconds::MillisecondsDuration},
 };
 
 const ONE_DAY: u64 = 24 * 60 * 60;
@@ -54,48 +59,60 @@ fn cw721_timelock_test() {
         minter: addr2.to_string(),
     };
 
-    let cw721_timelock_addr: Addr = router.instantiate_contract(
-        cw721_timelock_id,
-        addr1.clone(),
-        &cw721_timelock_instantiate_msg,
-        &[],
-        "CW721 Timelock",
-        None,
-    ).unwrap();
+    let cw721_timelock_addr: Addr = router
+        .instantiate_contract(
+            cw721_timelock_id,
+            addr1.clone(),
+            &cw721_timelock_instantiate_msg,
+            &[],
+            "CW721 Timelock",
+            None,
+        )
+        .unwrap();
 
-    let query_owner_msg = QueryMsg::Owner { };
-    let owner_res: ContractOwnerResponse = router.wrap().query_wasm_smart(&cw721_timelock_addr, &query_owner_msg).unwrap();
-    
+    let query_owner_msg = QueryMsg::Owner {};
+    let owner_res: ContractOwnerResponse = router
+        .wrap()
+        .query_wasm_smart(&cw721_timelock_addr, &query_owner_msg)
+        .unwrap();
+
     // Assert that the owner of the CW721 Timelock contract is addr1
     assert_eq!(addr1, owner_res.owner);
 
-    let cw721_addr: Addr = router.instantiate_contract(
-        cw721_id,
-        addr2.clone(),
-        &cw721_instantiate_msg,
-        &[],
-        "CW721",
-        Some(origin_cw721_owner.to_string()),
-    ).unwrap();
+    let cw721_addr: Addr = router
+        .instantiate_contract(
+            cw721_id,
+            addr2.clone(),
+            &cw721_instantiate_msg,
+            &[],
+            "CW721",
+            Some(origin_cw721_owner.to_string()),
+        )
+        .unwrap();
 
     let query_minter_msg: cw721_base::msg::QueryMsg<String> = cw721_base::msg::QueryMsg::Minter {};
-    let minter_res: MinterResponse = router.wrap().query_wasm_smart(&cw721_addr, &query_minter_msg).unwrap();
-    
+    let minter_res: MinterResponse = router
+        .wrap()
+        .query_wasm_smart(&cw721_addr, &query_minter_msg)
+        .unwrap();
+
     // Assert that the minter of the CW721 contract is addr2
     assert_eq!(Some(addr2.to_string()), minter_res.minter);
 
-    let cw721_mint_msg: cw721_base::msg::ExecuteMsg<Empty, Empty> = cw721_base::msg::ExecuteMsg::Mint { 
-        token_id: "token1".to_string(), 
-        owner: origin_cw721_owner.to_string(), 
-        token_uri: None, 
-        extension: Empty::default(),
-    };
+    let cw721_mint_msg: cw721_base::msg::ExecuteMsg<Empty, Empty> =
+        cw721_base::msg::ExecuteMsg::Mint {
+            token_id: "token1".to_string(),
+            owner: origin_cw721_owner.to_string(),
+            token_uri: None,
+            extension: Empty::default(),
+        };
     // Only minter of cw721 can execute mint function
-    router.execute_contract(addr2.clone(), cw721_addr.clone(), &cw721_mint_msg, &[]).unwrap();
-
+    router
+        .execute_contract(addr2.clone(), cw721_addr.clone(), &cw721_mint_msg, &[])
+        .unwrap();
 
     //** Another method to execute contract **//
-    
+
     // let execute_mint_msg = CosmosMsg::Wasm(WasmMsg::Execute {
     //     contract_addr: cw721_addr.to_string(),
     //     msg: encode_binary(&cw721_mint_msg).unwrap(),
@@ -103,12 +120,15 @@ fn cw721_timelock_test() {
     // });
     // router.execute(addr2, execute_mint_msg).unwrap();
 
-    let query_owner_msg: cw721_base::msg::QueryMsg<String> = cw721_base::msg::QueryMsg::OwnerOf { 
+    let query_owner_msg: cw721_base::msg::QueryMsg<String> = cw721_base::msg::QueryMsg::OwnerOf {
         token_id: "token1".to_string(),
-        include_expired: None, 
+        include_expired: None,
     };
-    let owner_res: OwnerOfResponse = router.wrap().query_wasm_smart(&cw721_addr, &query_owner_msg).unwrap();
-    
+    let owner_res: OwnerOfResponse = router
+        .wrap()
+        .query_wasm_smart(&cw721_addr, &query_owner_msg)
+        .unwrap();
+
     // Assert that the owner of the token1 is origin_cw721_owner
     assert_eq!(origin_cw721_owner.to_string(), owner_res.owner);
 
@@ -117,42 +137,59 @@ fn cw721_timelock_test() {
         recipient: Recipient::new(recipient.to_string(), None),
     };
 
-    let send_cw721_msg: cw721_base::msg::ExecuteMsg<Empty, Empty> = cw721_base::msg::ExecuteMsg::SendNft { 
-        contract: cw721_timelock_addr.to_string(), 
-        token_id: "token1".to_string(), 
-        msg: encode_binary(&hook_msg).unwrap(),
-    };
+    let send_cw721_msg: cw721_base::msg::ExecuteMsg<Empty, Empty> =
+        cw721_base::msg::ExecuteMsg::SendNft {
+            contract: cw721_timelock_addr.to_string(),
+            token_id: "token1".to_string(),
+            msg: encode_binary(&hook_msg).unwrap(),
+        };
 
     let env = mock_env();
     let expected_unlock_time = env.block.time.seconds() + 3 * ONE_DAY;
 
-    router.execute_contract(origin_cw721_owner.clone(), cw721_addr.clone(), &send_cw721_msg, &[]).unwrap();
+    router
+        .execute_contract(
+            origin_cw721_owner.clone(),
+            cw721_addr.clone(),
+            &send_cw721_msg,
+            &[],
+        )
+        .unwrap();
 
-    let owner_res: OwnerOfResponse = router.wrap().query_wasm_smart(&cw721_addr, &query_owner_msg).unwrap();
+    let owner_res: OwnerOfResponse = router
+        .wrap()
+        .query_wasm_smart(&cw721_addr, &query_owner_msg)
+        .unwrap();
 
     // Assert that the owner of token1 is now the CW721 Timelock contract
     assert_eq!(cw721_timelock_addr.to_string(), owner_res.owner);
-    
-    let query_unlock_info_msg = QueryMsg::UnlockTime { 
-        cw721_contract: AndrAddr::from_string(cw721_addr.to_string()), 
-        token_id: "token1".to_string(), 
+
+    let query_unlock_info_msg = QueryMsg::UnlockTime {
+        cw721_contract: AndrAddr::from_string(cw721_addr.to_string()),
+        token_id: "token1".to_string(),
     };
-    let unlock_info_res: UnlockTimeResponse = router.wrap().query_wasm_smart(&cw721_timelock_addr, &query_unlock_info_msg).unwrap();
-    
+    let unlock_info_res: UnlockTimeResponse = router
+        .wrap()
+        .query_wasm_smart(&cw721_timelock_addr, &query_unlock_info_msg)
+        .unwrap();
+
     // Assert that the unlock time is as expected
     assert_eq!(expected_unlock_time, unlock_info_res.unlock_time);
 
-    let query_nft_details_msg = QueryMsg::NftDetails { 
-        cw721_contract: AndrAddr::from_string(cw721_addr.to_string()), 
-        token_id: "token1".to_string(), 
+    let query_nft_details_msg = QueryMsg::NftDetails {
+        cw721_contract: AndrAddr::from_string(cw721_addr.to_string()),
+        token_id: "token1".to_string(),
     };
-    let nft_details_res: NftDetailsResponse = router.wrap().query_wasm_smart(&cw721_timelock_addr, &query_nft_details_msg).unwrap();
-    
+    let nft_details_res: NftDetailsResponse = router
+        .wrap()
+        .query_wasm_smart(&cw721_timelock_addr, &query_nft_details_msg)
+        .unwrap();
+
     // Assert that the recipient is as set
     assert_eq!(recipient, nft_details_res.recipient);
 
-    let execute_claim_msg = ExecuteMsg::ClaimNft { 
-        cw721_contract: AndrAddr::from_string(cw721_addr.to_string()), 
+    let execute_claim_msg = ExecuteMsg::ClaimNft {
+        cw721_contract: AndrAddr::from_string(cw721_addr.to_string()),
         token_id: "token1".to_string(),
     };
 
@@ -161,8 +198,15 @@ fn cw721_timelock_test() {
     });
 
     // Attempt to claim before unlock time and expect an error
-    let err_res: Error = router.execute_contract(origin_cw721_owner.clone(), cw721_timelock_addr.clone(), &execute_claim_msg, &[]).unwrap_err();
-    let err_str = "error executing WasmMsg:\nsender: origin_cw721_owner\nExecute { contract_addr: \"contract0\", msg: {\"claim_nft\":{\"cw721_contract\":\"contract1\",\"token_id\":\"token1\"}}, funds: [] }";    
+    let err_res: Error = router
+        .execute_contract(
+            origin_cw721_owner.clone(),
+            cw721_timelock_addr.clone(),
+            &execute_claim_msg,
+            &[],
+        )
+        .unwrap_err();
+    let err_str = "error executing WasmMsg:\nsender: origin_cw721_owner\nExecute { contract_addr: \"contract0\", msg: {\"claim_nft\":{\"cw721_contract\":\"contract1\",\"token_id\":\"token1\"}}, funds: [] }";
     assert_eq!(err_res.to_string(), err_str.to_string());
 
     router.update_block(|block| {
@@ -170,9 +214,19 @@ fn cw721_timelock_test() {
     });
 
     // Attempt to claim after unlock time
-    router.execute_contract(origin_cw721_owner.clone(), cw721_timelock_addr.clone(), &execute_claim_msg, &[]).unwrap();
+    router
+        .execute_contract(
+            origin_cw721_owner.clone(),
+            cw721_timelock_addr.clone(),
+            &execute_claim_msg,
+            &[],
+        )
+        .unwrap();
 
-    let owner_res: OwnerOfResponse = router.wrap().query_wasm_smart(&cw721_addr, &query_owner_msg).unwrap();
+    let owner_res: OwnerOfResponse = router
+        .wrap()
+        .query_wasm_smart(&cw721_addr, &query_owner_msg)
+        .unwrap();
 
     // Assert that the owner of token1 is now the recipient
     assert_eq!(recipient, owner_res.owner);

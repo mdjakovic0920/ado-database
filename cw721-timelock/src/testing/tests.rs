@@ -1,21 +1,24 @@
-use cosmwasm_std::{
-    Addr, QueryRequest, Attribute,
-    testing::{mock_env, mock_info},
-    WasmQuery, to_json_binary, from_json, Querier,
-};
-use cw721::{Cw721QueryMsg, OwnerOfResponse, Cw721ReceiveMsg};
 use crate::{
-    contract::{instantiate, execute, query},
-    msg::{InstantiateMsg, ExecuteMsg, QueryMsg, UnlockTimeResponse, NftDetailsResponse, Cw721HookMsg, IsLockedResponse},
-    testing::mock_querier::{MOCK_CW721_CONTRACT, MOCK_TOKEN_OWNER, mock_dependencies_custom}
+    contract::{execute, instantiate, query},
+    msg::{
+        Cw721HookMsg, ExecuteMsg, InstantiateMsg, IsLockedResponse, NftDetailsResponse, QueryMsg,
+        UnlockTimeResponse,
+    },
+    testing::mock_querier::{mock_dependencies_custom, MOCK_CW721_CONTRACT, MOCK_TOKEN_OWNER},
 };
 use andromeda_std::{
-    common::encode_binary, 
-    testing::mock_querier::MOCK_KERNEL_CONTRACT, 
-    error::ContractError, 
-    common::{milliseconds::MillisecondsDuration},
     amp::{AndrAddr, Recipient},
+    common::encode_binary,
+    common::milliseconds::MillisecondsDuration,
+    error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
+use cosmwasm_std::{
+    from_json,
+    testing::{mock_env, mock_info},
+    to_json_binary, Addr, Attribute, Querier, QueryRequest, WasmQuery,
+};
+use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 
 const ONE_DAY: u64 = 24 * 60 * 60;
 const ONE_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -54,15 +57,29 @@ fn test_timelock_cw721() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
-    let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
-    assert_eq!(execute_res.attributes, vec![
-        Attribute { key: "method".to_string(), value: "timelock_cw721".to_string() }, 
-        Attribute { key: "contract_address".to_string(), value: "cw721_contract".to_string() },
-        Attribute { key: "token_id".to_string(), value: "token1".to_string() },
-    ]);
+    let execute_res =
+        execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
+    assert_eq!(
+        execute_res.attributes,
+        vec![
+            Attribute {
+                key: "method".to_string(),
+                value: "timelock_cw721".to_string()
+            },
+            Attribute {
+                key: "contract_address".to_string(),
+                value: "cw721_contract".to_string()
+            },
+            Attribute {
+                key: "token_id".to_string(),
+                value: "token1".to_string()
+            },
+        ]
+    );
     // Verify the timelock has been set
     let query_res: UnlockTimeResponse = from_json(
         &query(
@@ -71,10 +88,15 @@ fn test_timelock_cw721() {
             QueryMsg::UnlockTime {
                 cw721_contract: AndrAddr::from_string(MOCK_CW721_CONTRACT.to_string()),
                 token_id: "token1".to_string(),
-            }
-        ).unwrap()
-    ).unwrap();
-    assert_eq!(query_res.unlock_time, env.block.time.seconds() + 3 * ONE_DAY);
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        query_res.unlock_time,
+        env.block.time.seconds() + 3 * ONE_DAY
+    );
 }
 
 #[test]
@@ -96,15 +118,29 @@ fn test_claim_cw721() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
-    let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
-    assert_eq!(execute_res.attributes, vec![
-        Attribute { key: "method".to_string(), value: "timelock_cw721".to_string() }, 
-        Attribute { key: "contract_address".to_string(), value: "cw721_contract".to_string() },
-        Attribute { key: "token_id".to_string(), value: "token1".to_string() },
-    ]);
+    let execute_res =
+        execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
+    assert_eq!(
+        execute_res.attributes,
+        vec![
+            Attribute {
+                key: "method".to_string(),
+                value: "timelock_cw721".to_string()
+            },
+            Attribute {
+                key: "contract_address".to_string(),
+                value: "cw721_contract".to_string()
+            },
+            Attribute {
+                key: "token_id".to_string(),
+                value: "token1".to_string()
+            },
+        ]
+    );
 
     // Fast forward time
     let mut env_claim = mock_env();
@@ -116,26 +152,40 @@ fn test_claim_cw721() {
     };
 
     let claim_res = execute(deps.as_mut(), env_claim.clone(), info.clone(), claim_msg).unwrap();
-    assert_eq!(claim_res.attributes, vec![
-        Attribute { key: "method".to_string(), value: "claim_nft".to_string() }, 
-        Attribute { key: "token_id".to_string(), value: "token1".to_string() }, 
-        Attribute { key: "recipient".to_string(), value: "recipient".to_string() },
-    ]);
+    assert_eq!(
+        claim_res.attributes,
+        vec![
+            Attribute {
+                key: "method".to_string(),
+                value: "claim_nft".to_string()
+            },
+            Attribute {
+                key: "token_id".to_string(),
+                value: "token1".to_string()
+            },
+            Attribute {
+                key: "recipient".to_string(),
+                value: "recipient".to_string()
+            },
+        ]
+    );
 
     // Verify ownership transfer using raw_query
-    let owner_query_msg = to_json_binary(&QueryRequest::<cosmwasm_std::Empty>::Wasm(WasmQuery::Smart {
-        contract_addr: MOCK_CW721_CONTRACT.to_string(),
-        msg: encode_binary(&Cw721QueryMsg::OwnerOf {
-            token_id: "token1".to_string(),
-            include_expired: None,
-        }).unwrap(),
-    })).unwrap();
+    let owner_query_msg = to_json_binary(&QueryRequest::<cosmwasm_std::Empty>::Wasm(
+        WasmQuery::Smart {
+            contract_addr: MOCK_CW721_CONTRACT.to_string(),
+            msg: encode_binary(&Cw721QueryMsg::OwnerOf {
+                token_id: "token1".to_string(),
+                include_expired: None,
+            })
+            .unwrap(),
+        },
+    ))
+    .unwrap();
 
     let raw_query_res = deps.querier.raw_query(&owner_query_msg);
 
-    let owner_response: OwnerOfResponse = from_json(
-        &(raw_query_res.unwrap()).unwrap()
-    ).unwrap();
+    let owner_response: OwnerOfResponse = from_json(&(raw_query_res.unwrap()).unwrap()).unwrap();
 
     assert_eq!(owner_response.owner, "owner".to_string());
 }
@@ -159,11 +209,13 @@ fn test_too_short_lock_duration() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(ONE_DAY / 2),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
-    let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap_err();
-    assert_eq!(execute_res, ContractError::LockTimeTooShort {});    
+    let execute_res =
+        execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap_err();
+    assert_eq!(execute_res, ContractError::LockTimeTooShort {});
 }
 
 #[test]
@@ -185,11 +237,13 @@ fn test_too_long_lock_duration() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(2 * ONE_YEAR),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
-    let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap_err();
-    assert_eq!(execute_res, ContractError::LockTimeTooLong {});    
+    let execute_res =
+        execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap_err();
+    assert_eq!(execute_res, ContractError::LockTimeTooLong {});
 }
 
 #[test]
@@ -211,7 +265,8 @@ fn test_locked_nft() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
     execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
@@ -271,7 +326,8 @@ fn test_query_nft_details() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
     execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
@@ -281,9 +337,8 @@ fn test_query_nft_details() {
         token_id: "token1".to_string(),
     };
 
-    let res: NftDetailsResponse = from_json(
-        &query(deps.as_ref(), env.clone(), query_msg).unwrap()
-    ).unwrap();
+    let res: NftDetailsResponse =
+        from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
     assert_eq!(res.unlock_time, env.block.time.seconds() + 3 * ONE_DAY);
     assert_eq!(res.recipient, Addr::unchecked("recipient"));
@@ -308,7 +363,8 @@ fn test_query_unlocktime() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
     execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
@@ -317,9 +373,8 @@ fn test_query_unlocktime() {
         token_id: "token1".to_string(),
     };
 
-    let res: UnlockTimeResponse = from_json(
-        &query(deps.as_ref(), env.clone(), query_msg).unwrap()
-    ).unwrap();
+    let res: UnlockTimeResponse =
+        from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
     assert_eq!(res.unlock_time, env.block.time.seconds() + 3 * ONE_DAY);
 }
@@ -343,7 +398,8 @@ fn test_query_is_locked() {
         msg: encode_binary(&Cw721HookMsg::TimelockNft {
             lock_duration: MillisecondsDuration::from_seconds(3 * ONE_DAY),
             recipient: Recipient::new("recipient", None),
-        }).unwrap(),
+        })
+        .unwrap(),
     });
 
     execute(deps.as_mut(), env.clone(), info.clone(), timelock_cw721_msg).unwrap();
@@ -356,9 +412,8 @@ fn test_query_is_locked() {
         token_id: "token1".to_string(),
     };
 
-    let res: IsLockedResponse = from_json(
-        &query(deps.as_ref(), env.clone(), query_msg).unwrap()
-    ).unwrap();
+    let res: IsLockedResponse =
+        from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
     assert_eq!(res.is_locked, true);
 }

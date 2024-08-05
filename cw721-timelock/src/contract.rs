@@ -1,22 +1,29 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, ensure, Response, CosmosMsg, WasmMsg, from_json, attr, Empty};
+use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, permissioning::Permission, MigrateMsg},
+    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    amp::{AndrAddr, Recipient},
     common::{
-        encode_binary, milliseconds::MillisecondsDuration, milliseconds::Milliseconds, context::ExecuteContext,
+        context::ExecuteContext, encode_binary, milliseconds::Milliseconds,
+        milliseconds::MillisecondsDuration,
     },
     error::ContractError,
-    amp::{AndrAddr, Recipient},
 };
-use andromeda_non_fungible_tokens::cw721::ExecuteMsg as Cw721ExecuteMsg;
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{
+    attr, ensure, from_json, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    WasmMsg,
+};
 
-use crate::msg::{ ExecuteMsg, InstantiateMsg, Cw721HookMsg, UnlockTimeResponse, NftDetailsResponse, IsLockedResponse, QueryMsg };
-use crate::state::{TIMELOCKS, TimelockInfo};
+use crate::msg::{
+    Cw721HookMsg, ExecuteMsg, InstantiateMsg, IsLockedResponse, NftDetailsResponse, QueryMsg,
+    UnlockTimeResponse,
+};
+use crate::state::{TimelockInfo, TIMELOCKS};
 
-use cw721::Cw721ReceiveMsg;
 use cw2::set_contract_version;
+use cw721::Cw721ReceiveMsg;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721-timelock";
@@ -66,11 +73,9 @@ pub fn instantiate(
         }
     }
 
-    Ok(
-        resp
+    Ok(resp
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender)
-    )
+        .add_attribute("owner", info.sender))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -91,7 +96,6 @@ pub fn execute(
 }
 
 pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
         ExecuteMsg::ClaimNft {
@@ -102,8 +106,10 @@ pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
     }
 }
 
-fn handle_receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Response, ContractError> {
-
+fn handle_receive_cw721(
+    ctx: ExecuteContext,
+    msg: Cw721ReceiveMsg,
+) -> Result<Response, ContractError> {
     ADOContract::default().is_permissioned(
         ctx.deps.storage,
         ctx.env.clone(),
@@ -115,13 +121,7 @@ fn handle_receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Res
         Cw721HookMsg::TimelockNft {
             lock_duration,
             recipient,
-        } => execute_timelock_cw721(
-            ctx,
-            msg.sender,
-            msg.token_id,
-            lock_duration,
-            recipient,
-        ),
+        } => execute_timelock_cw721(ctx, msg.sender, msg.token_id, lock_duration, recipient),
     }
 }
 
@@ -134,10 +134,7 @@ fn execute_timelock_cw721(
     recipient: Recipient,
 ) -> Result<Response<Empty>, ContractError> {
     let ExecuteContext {
-        deps,
-        info,
-        env,
-        ..
+        deps, info, env, ..
     } = ctx;
 
     ensure!(
@@ -151,7 +148,8 @@ fn execute_timelock_cw721(
 
     let lock_id = (&info.sender, token_id.as_str());
 
-    let recipient_addr = AndrAddr::from_string(recipient.get_addr()).get_raw_address(&deps.as_ref())?;
+    let recipient_addr =
+        AndrAddr::from_string(recipient.get_addr()).get_raw_address(&deps.as_ref())?;
     let timelock_info = TimelockInfo {
         unlock_time: Milliseconds::from_seconds(env.block.time.seconds() + lock_duration.seconds()),
         recipient: recipient_addr,
@@ -159,13 +157,11 @@ fn execute_timelock_cw721(
 
     TIMELOCKS.save(deps.storage, lock_id, &timelock_info)?;
 
-    Ok(Response::new()
-        .add_attributes(vec![
-            attr("method", "timelock_cw721"),
-            attr("contract_address", &info.sender.to_string()),
-            attr("token_id", token_id.clone())
-        ])
-    )
+    Ok(Response::new().add_attributes(vec![
+        attr("method", "timelock_cw721"),
+        attr("contract_address", &info.sender.to_string()),
+        attr("token_id", token_id.clone()),
+    ]))
 }
 
 fn execute_claim_cw721(
@@ -173,21 +169,24 @@ fn execute_claim_cw721(
     cw721_contract: AndrAddr,
     token_id: String,
 ) -> Result<Response<Empty>, ContractError> {
-    let ExecuteContext {
-        deps,
-        env,
-        ..
-    } = ctx;
+    let ExecuteContext { deps, env, .. } = ctx;
 
-    let lock_id = (&cw721_contract.get_raw_address(&deps.as_ref())?, token_id.as_str());
-    let timelock_info = TIMELOCKS.load(deps.storage, lock_id).map_err(|_| ContractError::NFTNotFound {})?;
+    let lock_id = (
+        &cw721_contract.get_raw_address(&deps.as_ref())?,
+        token_id.as_str(),
+    );
+    let timelock_info = TIMELOCKS
+        .load(deps.storage, lock_id)
+        .map_err(|_| ContractError::NFTNotFound {})?;
 
     if env.block.time.seconds() < timelock_info.unlock_time.seconds() {
         return Err(ContractError::LockedNFT {});
     }
 
     let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: cw721_contract.get_raw_address(&deps.as_ref())?.into_string(),
+        contract_addr: cw721_contract
+            .get_raw_address(&deps.as_ref())?
+            .into_string(),
         msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
             recipient: AndrAddr::from_string(timelock_info.recipient.to_string()),
             token_id: token_id.clone(),
@@ -201,20 +200,24 @@ fn execute_claim_cw721(
         .add_message(transfer_msg)
         .add_attribute("method", "claim_nft")
         .add_attribute("token_id", token_id)
-        .add_attribute("recipient", timelock_info.recipient.to_string())
-    )
+        .add_attribute("recipient", timelock_info.recipient.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(
-    deps: Deps,
-    env: Env,
-    msg: QueryMsg,
-) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::UnlockTime { cw721_contract, token_id } => encode_binary(&query_unlock_time(deps, cw721_contract, token_id)?),
-        QueryMsg::NftDetails { cw721_contract, token_id } => encode_binary(&query_nft_details(deps, cw721_contract, token_id)?),
-        QueryMsg::IsLocked { cw721_contract, token_id } => encode_binary(&query_is_locked(deps, env, cw721_contract, token_id)?),
+        QueryMsg::UnlockTime {
+            cw721_contract,
+            token_id,
+        } => encode_binary(&query_unlock_time(deps, cw721_contract, token_id)?),
+        QueryMsg::NftDetails {
+            cw721_contract,
+            token_id,
+        } => encode_binary(&query_nft_details(deps, cw721_contract, token_id)?),
+        QueryMsg::IsLocked {
+            cw721_contract,
+            token_id,
+        } => encode_binary(&query_is_locked(deps, env, cw721_contract, token_id)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -226,7 +229,7 @@ fn query_unlock_time(
 ) -> Result<UnlockTimeResponse, ContractError> {
     let lock_id = (&cw721_contract.get_raw_address(&deps)?, token_id.as_str());
     let timelock = TIMELOCKS.load(deps.storage, lock_id)?;
-    
+
     Ok(UnlockTimeResponse {
         unlock_time: timelock.unlock_time.seconds(),
     })
@@ -258,9 +261,7 @@ fn query_is_locked(
     let current_time = env.block.time.seconds();
     let is_locked = unlock_time > current_time;
 
-    Ok(IsLockedResponse {
-        is_locked,
-    })
+    Ok(IsLockedResponse { is_locked })
 }
 
 #[cfg_attr(not(feature = "imported"), entry_point)]

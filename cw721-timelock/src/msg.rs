@@ -1,10 +1,10 @@
-use cosmwasm_std::Addr;
-use cosmwasm_schema::{cw_serde, QueryResponses};
 use andromeda_std::{
-    andr_exec, andr_instantiate, andr_query,
     amp::{AndrAddr, Recipient},
-    common::{milliseconds::MillisecondsDuration},
+    andr_exec, andr_instantiate, andr_query,
+    common::milliseconds::MillisecondsDuration,
 };
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 use cw721::Cw721ReceiveMsg;
 
 #[andr_instantiate]
@@ -28,7 +28,7 @@ pub enum Cw721HookMsg {
     TimelockNft {
         lock_duration: MillisecondsDuration,
         recipient: Recipient,
-    }
+    },
 }
 
 #[andr_query]
@@ -49,7 +49,7 @@ pub enum QueryMsg {
     IsLocked {
         cw721_contract: AndrAddr,
         token_id: String,
-    }
+    },
 }
 
 #[cw_serde]

@@ -14,8 +14,8 @@ pub const MOCK_TOKEN_OWNER: &str = "owner";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 
 // pub const _RATES: &str = "rates";
-use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_app::app::QueryMsg as AppQueryMsg;
+use andromeda_std::ado_base::InstantiateMsg;
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
