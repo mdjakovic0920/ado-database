@@ -67,8 +67,3 @@ pub struct NftDetailsResponse {
 pub struct IsLockedResponse {
     pub is_locked: bool,
 }
-
-#[cw_serde]
-pub struct TokenExtension {
-    pub publisher: String,
-}
