@@ -13,8 +13,10 @@ assignees: ''
 - Name:
 - Discord:
 - Email Address:
-- Github: 
-
+- Github:
+  
+**ADO Repo** (Provide a link to the repo the ADO is developed on)
+  
 **Contract Summary(Details of the contract and specific functionality to be included)**
 
 **External Reference Links(Link to something that might provide additional information about this ADO and its use cases if applicable)**
@@ -74,7 +76,7 @@ assignees: ''
 
 ## Additional Sections/Material Needed 
 
-Make sure you have the following in your PR:
+Make sure you have the following in your Repo:
 
 1. Clear and neat ReadMe file that includes a summary of the ADO and documentation on how to use it
 2. ADO should contain unit tests. Testing should cover both positive and negative testing with 90% coverage. Any additional testing (on-chain or other) is also encouraged but not required.
