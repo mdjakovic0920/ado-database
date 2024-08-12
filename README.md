@@ -17,3 +17,7 @@ To submit a created ADO to be added to our library of ADOs, you need to create a
 
 **Note**:
 You should have your ADO idea approved before going through submitting the ADO. To get your idea approved, follow the steps in the **Requesting a new ADO** section.
+
+## Developing an Approved ADO 
+
+Development of the ADO should be done on the developers own repository and then a link should be provided to the ADO in the submission phase. Developers are encouraged to start with our [ADO Template](https://github.com/andromedaprotocol/andr-cw-template). DO NOT create a PR for the ADO on any of Andromeda's public repos (Andromeda Core or other).
