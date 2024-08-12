@@ -13,11 +13,11 @@ To request a new feature for an existing ADO, create a new [Issue](https://githu
 For a submission to be valid, please fill in the templates completely as all the sections are required.
 
 ## Submitting an ADO to be added to the Andromeda library
-To submit a created ADO to be added to our library of ADOs, you need to create a PR to this repo. The PR should include information similar to the what is found in our [ADO Submission template](https://github.com/andromedaprotocol/ado-database/issues/new/choose). An example can be found [here](https://github.com/andromedaprotocol/ado-database/issues/4).
+To submit a created ADO to be added to our library of ADOs, you need to create an issue to this repo. The issue should include information similar to the what is found in our [ADO Submission template](https://github.com/andromedaprotocol/ado-database/issues/new/choose). An example can be found [here](https://github.com/andromedaprotocol/ado-database/issues/4).
 
 **Note**:
 - You should have your ADO idea approved before going through submitting the ADO. To get your idea approved, follow the steps in the **Requesting a new ADO** section.
-- PR should not include the ADO's codebase. Only a Readme with all the information provided in our templates. Make sure to include a link to the codebase in the PR. 
+ - Make sure to include a link to the codebase in the issue you create.
 
 ## Developing an Approved ADO 
 
