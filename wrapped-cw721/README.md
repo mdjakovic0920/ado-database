@@ -1,93 +1,50 @@
-# Andromeda CosmWasm Starter Pack
+**ADO Summary - What is the goal of this ADO and how does it function?**
+The goal of the Wrapped CW721 ADO is to create a smart contract that allows users to wrap their existing CW721 tokens. This wrapped version of the token can be used to leverage additional functionalities, such as enabling TransferAgreement without the need for a marketplace or escrow service. The primary function of this ADO is to allow users to deposit their CW721 tokens and receive a corresponding wrapped token in return. These wrapped tokens can be traded or transferred, and at any time, the holder of a wrapped token can unwrap it to get back the original CW721 token, provided the contract creator allows unwrapping. This functionality enables a variety of use cases, such as creating temporary representations of NFTs for specific purposes or adding layers of functionality to existing NFTs.
 
-**This repo is a variant of the [CosmWasm starter template](https://github.com/CosmWasm/cw-template).**
+**Does it need to work with another ADO or is it standalone? Also, does it implement any modules?**
+This ADO can work standalone but can also be integrated with other ADOs like Cw721 to facilitate trades without the need for a marketplace or escrow service. It does not need to implement modules like Addresslist or Rates.
 
-## Documentation
+**Are you planning to build this ADO yourself, or by the Andromeda team**
+I am planning to build this ADO myself.
 
-To see what's involved in making an ADO check out our documentation [here](https://docs.andromedaprotocol.io/andromeda/creating-an-ado/getting-started).
+**Credits/Associations - Is this ADO based upon a previous project or ADO or in partnership with any other groups or developers? If so, please list here and provide a link if possible.**
+This ADO is inspired by existing Wrapped NFT implementations and functionalities. It could also draw from other token wrapping projects in the blockchain ecosystem.
 
-# CosmWasm Template ReadMe
+**Can you provide any docs/articles/research that explains the main idea of the ADO and how/why it is used.**
+- CW721 Documentation(https://docs.andromedaprotocol.io/andromeda/andromeda-digital-objects/cw721)
+- https://docs.ethos.wiki/ethereansos-docs/items/items/item-v2-protocol-overview/wrapped-items/erc721-wrapper
+- https://kaigani.medium.com/wrapped-nfts-the-next-phase-in-crypto-collectibles-8253feeaabba
 
-This is a template to build smart contracts in Rust to run inside a
-[Cosmos SDK](https://github.com/cosmos/cosmos-sdk) module on all chains that enable it.
-To understand the framework better, please read the overview in the
-[cosmwasm repo](https://github.com/CosmWasm/cosmwasm/blob/master/README.md),
-and dig into the [cosmwasm docs](https://www.cosmwasm.com).
-This assumes you understand the theory and just want to get coding.
+**ADO Flow Breakdown - Please list and provide descriptions of each step in the ADO flow sequence (show us how to work with the ADO and associated workflow, visuals are great here):**
 
-## Creating a new repo from template
+Instantiation - What is defined when instantiating the ADO:
+- Define the Owner: The owner of the ADO is specified during instantiation, providing administrative control over the contract's settings and operations.
+- Link to CW721: Store the CW721 contract address that this wrapping contract will interact with.
+- Set Wrapping Parameters: Define the default wrapping and unwrapping conditions. This configuration sets the foundation for how the tokens will be wrapped and unwrapped.
 
-Assuming you have a recent version of Rust and Cargo installed
-(via [rustup](https://rustup.rs/)),
-then the following should get you a new repo to start a contract:
+Execution - After instantiation, what is the process for working with the ADO:
+- Wrap Token: Users send or deposit a CW721 token into the contract and receive a wrapped version of the token.
+- Unwrap Token: If allowed, users can deposit the wrapped token back into the contract to receive the original CW721 token.
 
-Install [cargo-generate](https://github.com/ashleygwilliams/cargo-generate) and cargo-run-script.
-Unless you did that before, run this line now:
+Queries - What type of information will you need to include, search upon:
+- Check original token details: Query the contract to get details about the original CW721 token associated with a wrapped token.
+- Check wrapped token details: Retrieve information about the wrapped token, including its ID and associated original token.
+- Check unwrappable status: Determine if a wrapped token can be unwrapped.
+- Get wrapped token count: Retrieve the total number of wrapped tokens.
+- Get wrapped token address: Obtain the address of the wrapped token contract.
+- Get contract's owner.
 
-```sh
-cargo install cargo-generate --features vendored-openssl
-cargo install cargo-run-script
-```
+**Considerations/Concerns - What factors should be considered to mitigate risk of misuse, abuse, or other unintended scenarios, if any?**
+- Data Integrity and Tamper-Proofing: Ensure that the contract logic correctly verifies the wrapping and unwrapping processes. Implement immutable data structures for storing token details to prevent unauthorized changes. Use strict validation checks to prevent malicious attempts to alter token states or conditions.
+- Access Control: Implement robust access control mechanisms to restrict who can wrap and unwrap tokens. Ensure that only authorized entities can perform these actions.
+- Wrapping Parameters: Define clear conditions for wrapping and unwrapping tokens, and enforce these rules strictly to ensure the system's integrity.
+- Contract Upgradability and Maintenance: Consider the potential need for contract upgrades or maintenance. Implement a transparent process for updating the contract, with safeguards to prevent unauthorized changes.
 
-Now, use it to create your new contract.
-Go to the folder in which you want to place it and run:
+**Possible Next Iterations/Future Work - How can this ADO be further enhanced?**
+- Enhanced Access Control: Implement more granular access control mechanisms, such as multi-signature authorization for wrapping and unwrapping tokens.
+- Dynamic Wrapping Adjustments: Introduce functionality to modify wrapping conditions under specific scenarios, with appropriate safeguards to prevent abuse.
+- Automated Wrapping Mechanisms: Develop automated mechanisms to facilitate wrapping and unwrapping processes, reducing the need for manual intervention.
 
-**Latest**
-
-```sh
-cargo generate --git https://github.com/andromedaprotocol/andr-cw-template.git --name PROJECT_NAME
-```
-
-For cloning minimal code repo:
-
-```sh
-cargo generate --git https://github.com/andromedaprotocol/andr-cw-template.git --name PROJECT_NAME -d minimal=true
-```
-
-You will now have a new folder called `PROJECT_NAME` (I hope you changed that to something else)
-containing a simple working contract and build system that you can customize.
-
-## Create a Repo
-
-After generating, you have a initialized local git repo, but no commits, and no remote.
-Go to a server (eg. github) and create a new upstream repo (called `YOUR-GIT-URL` below).
-Then run the following:
-
-```sh
-# this is needed to create a valid Cargo.lock file (see below)
-cargo check
-git branch -M main
-git add .
-git commit -m 'Initial Commit'
-git remote add origin YOUR-GIT-URL
-git push -u origin main
-```
-
-## CI Support
-
-We have template configurations for both [GitHub Actions](.github/workflows/Basic.yml)
-and [Circle CI](.circleci/config.yml) in the generated project, so you can
-get up and running with CI right away.
-
-One note is that the CI runs all `cargo` commands
-with `--locked` to ensure it uses the exact same versions as you have locally. This also means
-you must have an up-to-date `Cargo.lock` file, which is not auto-generated.
-The first time you set up the project (or after adding any dep), you should ensure the
-`Cargo.lock` file is updated, so the CI will test properly. This can be done simply by
-running `cargo check` or `cargo unit-test`.
-
-## Using your project
-
-Once you have your custom repo, you should check out [Developing](./Developing.md) to explain
-more on how to run tests and develop code. Or go through the
-[online tutorial](https://docs.cosmwasm.com/) to get a better feel
-of how to develop.
-
-[Publishing](./Publishing.md) contains useful information on how to publish your contract
-to the world, once you are ready to deploy it on a running blockchain. And
-[Importing](./Importing.md) contains information about pulling in other contracts or crates
-that have been published.
-
-Please replace this README file with information about your specific project. You can keep
-the `Developing.md` and `Publishing.md` files as useful references, but please set some
-proper description in the README.
+**Any Dependencies or Third Party Integrations? (Ex. Will this ADO need to work with anything off chain, a different app, etc?):**
+- CW721 Standard Contract: Dependency on an existing CW721 standard contract to manage the minting, transfer, and ownership of NFTs. Ensure seamless interaction with the CW721 contract by correctly implementing the CW721 interface and handling related messages.
+- User Interface Applications: Dependency on a user-friendly interface for interacting with the wrapping contract. Integration with web or mobile applications using frameworks like React, Vue, or Flutter to provide an intuitive interface for users to manage their wrapped NFTs.
