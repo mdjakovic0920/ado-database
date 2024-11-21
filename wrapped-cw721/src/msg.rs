@@ -1,9 +1,6 @@
+use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
-use andromeda_std::{
-    andr_instantiate, andr_exec, andr_query,
-    amp::AndrAddr,
-};
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -14,16 +11,13 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
-    SetWrappedNftAddress {
-        wrapped_nft_address: AndrAddr,
-    },
+    SetWrappedNftAddress { wrapped_nft_address: AndrAddr },
 }
 
 #[cw_serde]
 pub enum Cw721HookMsg {
     MintWrappedNft {
-        sender: AndrAddr,
-        wrapped_token_owner: String,
+        recipient: Option<AndrAddr>,
         unwrappable: bool,
     },
     UnwrapNft {

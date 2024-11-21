@@ -1,7 +1,7 @@
 use andromeda_std::amp::AndrAddr;
-use cw_storage_plus::{Map, Item};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
+use cw_storage_plus::{Item, Map};
 
 pub const WRAPPED_NFT_ADDRESS: Item<AndrAddr> = Item::new("wrapped_token_address");
 pub const WRAPPED_NFT_COUNT: Item<u64> = Item::new("wrapped_token_count");
@@ -23,4 +23,3 @@ pub struct OriginInfo {
     pub origin_token_id: String,
     pub unwrappable: bool,
 }
-
