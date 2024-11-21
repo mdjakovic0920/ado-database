@@ -1,18 +1,19 @@
-use cosmwasm_std::{
-    from_json, to_json_binary,
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery, QuerierWrapper,
-};
-use cw721::{Cw721QueryMsg, OwnerOfResponse, NftInfoResponse};
-use andromeda_std::{
-    ado_contract::ADOContract,
-    ado_base::InstantiateMsg,
-    os::kernel::{QueryMsg as KernelQueryMsg, ChannelInfo},
-    amp::{VFS_KEY, ADO_DB_KEY, ECONOMICS_KEY, OSMOSIS_ROUTER_KEY},
-    testing::mock_querier::{MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT},
-};
 use andromeda_app::app::QueryMsg as AppQueryMsg;
 use andromeda_non_fungible_tokens::cw721::TokenExtension;
+use andromeda_std::{
+    ado_base::InstantiateMsg,
+    ado_contract::ADOContract,
+    amp::{ADO_DB_KEY, ECONOMICS_KEY, OSMOSIS_ROUTER_KEY, VFS_KEY},
+    os::kernel::{ChannelInfo, QueryMsg as KernelQueryMsg},
+    testing::mock_querier::{MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT},
+};
+use cosmwasm_std::{
+    from_json,
+    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
+    QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
+};
+use cw721::{Cw721QueryMsg, NftInfoResponse, OwnerOfResponse};
 
 pub const MOCK_CW721_CONTRACT: &str = "cw721_contract";
 pub const MOCK_WRAPPED_NFT_CONTRACT: &str = "wrapped_nft_contract";
@@ -34,7 +35,9 @@ pub const MOCK_OSMOSIS_ROUTER_CONTRACT: &str = "osmosis_router";
 pub const MOCK_ECONOMICS_CONTRACT: &str = "economics_contract";
 
 // Mock dependencies with custom querier
-pub fn mock_dependencies_custom(contract_balance: &[Coin]) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
+pub fn mock_dependencies_custom(
+    contract_balance: &[Coin],
+) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
     let custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
     let storage = MockStorage::default();
@@ -63,7 +66,7 @@ pub fn mock_dependencies_custom(contract_balance: &[Coin]) -> OwnedDeps<MockStor
 }
 
 pub struct WasmMockQuerier {
-    pub base: MockQuerier,
+    pub _base: MockQuerier,
 }
 
 impl Querier for WasmMockQuerier {
@@ -137,16 +140,16 @@ impl WasmMockQuerier {
                     }
                 };
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
-            },
+            }
             Cw721QueryMsg::NftInfo { .. } => {
-                let res = NftInfoResponse{
+                let res = NftInfoResponse {
                     token_uri: None,
                     extension: TokenExtension {
                         publisher: "Andromeda".to_string(),
-                    } 
+                    },
                 };
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
-            },
+            }
 
             _ => SystemResult::Err(SystemError::UnsupportedRequest {
                 kind: format!("{:?}", msg),
@@ -154,10 +157,8 @@ impl WasmMockQuerier {
         }
     }
 
-    pub fn new(base: MockQuerier) -> Self {
-        WasmMockQuerier {
-            base,
-        }
+    pub fn new(_base: MockQuerier) -> Self {
+        WasmMockQuerier { _base }
     }
 
     fn handle_kernel_query(&self, msg: &Binary) -> QuerierResult {

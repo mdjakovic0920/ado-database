@@ -1,22 +1,27 @@
-#[cfg(not(feature = "imported"))]
-use cosmwasm_std::{
-    entry_point, ensure, from_json, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, WasmMsg,
-};
-use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg as AndrCw721ExecuteMsg, TokenExtension,
-};
+use andromeda_non_fungible_tokens::cw721::{ExecuteMsg as AndrCw721ExecuteMsg, TokenExtension};
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg, permissioning::Permission},
+    ado_base::{permissioning::Permission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{encode_binary, context::ExecuteContext},
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-use cw721::Cw721ReceiveMsg;
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::{
+    ensure, entry_point, from_json, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    QueryRequest, Response, WasmMsg, WasmQuery,
+};
+use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
 
 use crate::{
-    msg::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, OriginCw721InfoResponse, WrappedCw721InfoResponse},
-    state::{WrappedInfo, WRAPPED_INFO, OriginInfo, ORIGIN_INFO, WRAPPED_NFT_ADDRESS, WRAPPED_NFT_COUNT, AUTHORIED_TOKEN_ADDRESSES},
+    msg::{
+        Cw721HookMsg, ExecuteMsg, InstantiateMsg, OriginCw721InfoResponse, QueryMsg,
+        WrappedCw721InfoResponse,
+    },
+    state::{
+        OriginInfo, WrappedInfo, AUTHORIED_TOKEN_ADDRESSES, ORIGIN_INFO, WRAPPED_INFO,
+        WRAPPED_NFT_ADDRESS, WRAPPED_NFT_COUNT,
+    },
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-wrapped-cw721";
@@ -25,14 +30,13 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEFAULT_WRAPPED_TOKEN_COUNT: u64 = 0;
 const SEND_NFT_ACTION: &str = "SEND_NFT";
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-
     let contract = ADOContract::default();
 
     let resp = contract.instantiate(
@@ -51,7 +55,6 @@ pub fn instantiate(
 
     // Set send action permission to origin nfts.
     if let Some(authorized_token_addresses) = msg.authorized_token_addresses {
-
         AUTHORIED_TOKEN_ADDRESSES.save(deps.storage, &authorized_token_addresses)?;
 
         if !authorized_token_addresses.is_empty() {
@@ -70,13 +73,10 @@ pub fn instantiate(
     }
     WRAPPED_NFT_COUNT.save(deps.storage, &DEFAULT_WRAPPED_TOKEN_COUNT)?;
 
-    Ok(
-        resp
-        .add_attribute("method", "instantiate")
-    )
+    Ok(resp.add_attribute("method", "instantiate"))
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -85,21 +85,18 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let ctx = ExecuteContext::new(deps, info, env);
     if let ExecuteMsg::AMPReceive(pkt) = msg {
-        ADOContract::default().execute_amp_receive(
-            ctx,
-            pkt,
-            handle_execute,
-        )
+        ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
     } else {
         handle_execute(ctx, msg)
     }
 }
 
 fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-
     match msg {
         ExecuteMsg::ReceiveNft(msg) => handle_receive_cw721(ctx, msg),
-        ExecuteMsg::SetWrappedNftAddress { wrapped_nft_address } => execute_set_wrapped_nft_address(ctx, wrapped_nft_address),
+        ExecuteMsg::SetWrappedNftAddress {
+            wrapped_nft_address,
+        } => execute_set_wrapped_nft_address(ctx, wrapped_nft_address),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -108,67 +105,52 @@ fn execute_set_wrapped_nft_address(
     ctx: ExecuteContext,
     wrapped_nft_address: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps,
-        ..
-    } = ctx;
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    ensure!(
+        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_ref())?,
+        ContractError::Unauthorized {}
+    );
 
     WRAPPED_NFT_ADDRESS.save(deps.storage, &wrapped_nft_address)?;
 
     let addr = wrapped_nft_address.get_raw_address(&deps.as_ref())?;
     ADOContract::set_permission(
-        deps.storage, 
-        SEND_NFT_ACTION, 
+        deps.storage,
+        SEND_NFT_ACTION,
         addr,
         Permission::Whitelisted(None),
     )?;
 
     Ok(Response::new()
         .add_attribute("method", "set_wrapped_nft_address")
-        .add_attribute("wrapped_nft_address", wrapped_nft_address.to_string())
-    )
+        .add_attribute("wrapped_nft_address", wrapped_nft_address.to_string()))
 }
 
-fn handle_receive_cw721(ctx: ExecuteContext, msg: Cw721ReceiveMsg) -> Result<Response, ContractError> {
-
+fn handle_receive_cw721(
+    ctx: ExecuteContext,
+    msg: Cw721ReceiveMsg,
+) -> Result<Response, ContractError> {
     match from_json(&msg.msg)? {
-        Cw721HookMsg::MintWrappedNft { 
-            sender,
-            wrapped_token_owner,
-            unwrappable,
-        } => execute_mint_wrapped_cw721(
-            ctx,
-            sender,
-            msg.token_id,
-            wrapped_token_owner,
-            unwrappable,
-        ),
-        Cw721HookMsg::UnwrapNft { 
+        Cw721HookMsg::MintWrappedNft {
             recipient,
-            wrapped_token,
-            wrapped_token_id 
-        } => execute_unwrap_cw721(
-            ctx,
+            unwrappable,
+        } => execute_mint_wrapped_cw721(ctx, msg.token_id, recipient, unwrappable),
+        Cw721HookMsg::UnwrapNft {
             recipient,
             wrapped_token,
             wrapped_token_id,
-        ),
+        } => execute_unwrap_cw721(ctx, recipient, wrapped_token, wrapped_token_id),
     }
 }
 
 fn execute_mint_wrapped_cw721(
     ctx: ExecuteContext,
-    origin_token: AndrAddr,
     origin_token_id: String,
-    wrapped_token_owner: String,
+    recipient: Option<AndrAddr>,
     unwrappable: bool,
 ) -> Result<Response, ContractError> {
-
-    let ExecuteContext {
-        deps,
-        info,
-        ..
-    } = ctx;
+    let ExecuteContext { deps, info, .. } = ctx;
 
     ADOContract::default().is_permissioned(
         deps.storage,
@@ -177,10 +159,21 @@ fn execute_mint_wrapped_cw721(
         info.sender.clone(),
     )?;
 
-    ensure!(
-        info.sender.to_string() == origin_token.to_string(),
-        ContractError::VerificationFailed {}
-    );
+    let origin_token = info.sender.clone();
+
+    let recipient = if let Some(recipient) = recipient {
+        recipient
+    } else {
+        let owner_res: OwnerOfResponse =
+            deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: origin_token.to_string(),
+                msg: encode_binary(&Cw721QueryMsg::OwnerOf {
+                    token_id: origin_token_id.clone(),
+                    include_expired: None,
+                })?,
+            }))?;
+        AndrAddr::from_string(owner_res.owner)
+    };
 
     let wrapped_token = WRAPPED_NFT_ADDRESS.load(deps.storage)?;
 
@@ -188,11 +181,14 @@ fn execute_mint_wrapped_cw721(
     let wrapped_token_count = current_wrapped_token_count + 1;
     let wrapped_token_id = format!("{}{}", "wrapped_token", wrapped_token_count.to_string());
 
-    let wrapped_id = (&wrapped_token.get_raw_address(&deps.as_ref())?, wrapped_token_id.as_str());
-    let origin_id = (&origin_token.get_raw_address(&deps.as_ref())?, origin_token_id.as_str());
+    let wrapped_id = (
+        &wrapped_token.get_raw_address(&deps.as_ref())?,
+        wrapped_token_id.as_str(),
+    );
+    let origin_id = (&origin_token, origin_token_id.as_str());
 
     let origin_info = OriginInfo {
-        origin_token: origin_token.clone(),
+        origin_token: AndrAddr::from_string(origin_token.clone()),
         origin_token_id: origin_token_id.clone(),
         unwrappable: unwrappable.clone(),
     };
@@ -211,10 +207,10 @@ fn execute_mint_wrapped_cw721(
 
     let mint_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: wrapped_token.into_string().clone(),
-        msg: encode_binary(&AndrCw721ExecuteMsg::Mint { 
-            token_id: wrapped_token_id.clone(), 
-            owner: wrapped_token_owner.clone(), 
-            token_uri: None, 
+        msg: encode_binary(&AndrCw721ExecuteMsg::Mint {
+            token_id: wrapped_token_id.clone(),
+            owner: recipient.get_raw_address(&deps.as_ref())?.to_string(),
+            token_uri: None,
             extension: wrapped_token_extension,
         })?,
         funds: vec![],
@@ -225,8 +221,7 @@ fn execute_mint_wrapped_cw721(
     Ok(Response::new()
         .add_message(mint_msg)
         .add_attribute("method", "mint_wrapped_cw721")
-        .add_attribute("wrapped_token_id", wrapped_token_id)
-    )
+        .add_attribute("wrapped_token_id", wrapped_token_id))
 }
 
 fn execute_unwrap_cw721(
@@ -235,12 +230,7 @@ fn execute_unwrap_cw721(
     wrapped_token: AndrAddr,
     wrapped_token_id: String,
 ) -> Result<Response, ContractError> {
-
-    let ExecuteContext {
-        deps,
-        info,
-        ..
-    } = ctx;
+    let ExecuteContext { deps, info, .. } = ctx;
 
     ADOContract::default().is_permissioned(
         deps.storage,
@@ -249,10 +239,13 @@ fn execute_unwrap_cw721(
         info.sender.clone(),
     )?;
 
-    let wrapped_id = (&wrapped_token.get_raw_address(&deps.as_ref())?, wrapped_token_id.as_str());
+    let wrapped_id = (
+        &wrapped_token.get_raw_address(&deps.as_ref())?,
+        wrapped_token_id.as_str(),
+    );
     let origin_info = ORIGIN_INFO
-    .load(deps.storage, wrapped_id)
-    .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
+        .load(deps.storage, wrapped_id)
+        .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
 
     ensure!(
         origin_info.unwrappable,
@@ -261,70 +254,86 @@ fn execute_unwrap_cw721(
 
     let origin_token = origin_info.origin_token;
     let origin_token_id = origin_info.origin_token_id;
-    let origin_id = (&origin_token.get_raw_address(&deps.as_ref())?, origin_token_id.as_str());
+    let origin_id = (
+        &origin_token.get_raw_address(&deps.as_ref())?,
+        origin_token_id.as_str(),
+    );
 
-    let unwrap_cw721_msg = CosmosMsg::Wasm(WasmMsg::Execute { 
-        contract_addr: origin_token.into_string().clone(), 
-        msg: encode_binary(&AndrCw721ExecuteMsg::TransferNft { 
-            recipient: AndrAddr::from_string(recipient.to_string()), 
-            token_id: origin_token_id.clone(), 
-        })?, 
-        funds: vec![], 
+    let unwrap_cw721_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: origin_token.into_string().clone(),
+        msg: encode_binary(&AndrCw721ExecuteMsg::TransferNft {
+            recipient: AndrAddr::from_string(recipient.to_string()),
+            token_id: origin_token_id.clone(),
+        })?,
+        funds: vec![],
     });
 
     let burn_wrapped_cw721_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: wrapped_token.into_string().clone(),
-        msg: encode_binary(&AndrCw721ExecuteMsg::Burn { token_id: wrapped_token_id.clone() })?,
+        msg: encode_binary(&AndrCw721ExecuteMsg::Burn {
+            token_id: wrapped_token_id.clone(),
+        })?,
         funds: vec![],
     });
 
     WRAPPED_INFO.remove(deps.storage, origin_id);
     ORIGIN_INFO.remove(deps.storage, wrapped_id);
 
-    Ok(
-        Response::new()
+    Ok(Response::new()
         .add_message(burn_wrapped_cw721_msg)
         .add_message(unwrap_cw721_msg)
         .add_attribute("method", "unwrap_cw721")
-        .add_attribute("origin_token_id", origin_token_id)
-    )
-
+        .add_attribute("origin_token_id", origin_token_id))
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg{
-        QueryMsg::GetOriginCw721 { wrapped_token, wrapped_token_id } => {
-            Ok(encode_binary(&query_origin_cw721(deps, wrapped_token, wrapped_token_id)?)?)
-        },
-        QueryMsg::GetWrappedCw721 { origin_token, origin_token_id } => {
-            Ok(encode_binary(&query_wrapped_cw721(deps, origin_token, origin_token_id)?)?)
-        },
-        QueryMsg::IsUnwrappable { wrapped_token, wrapped_token_id } => {
-            Ok(encode_binary(&query_is_unwrappable(deps, wrapped_token, wrapped_token_id)?)?)
-        },
-        QueryMsg::GetWrappedNftCount {} => {
-            Ok(encode_binary(&query_wrapped_nft_count(deps)?)?)
-        },
-        QueryMsg::GetWrappedNftAddress {} => {
-            Ok(encode_binary(&query_wrapped_nft_address(deps)?)?)
-        },
+    match msg {
+        QueryMsg::GetOriginCw721 {
+            wrapped_token,
+            wrapped_token_id,
+        } => Ok(encode_binary(&query_origin_cw721(
+            deps,
+            wrapped_token,
+            wrapped_token_id,
+        )?)?),
+        QueryMsg::GetWrappedCw721 {
+            origin_token,
+            origin_token_id,
+        } => Ok(encode_binary(&query_wrapped_cw721(
+            deps,
+            origin_token,
+            origin_token_id,
+        )?)?),
+        QueryMsg::IsUnwrappable {
+            wrapped_token,
+            wrapped_token_id,
+        } => Ok(encode_binary(&query_is_unwrappable(
+            deps,
+            wrapped_token,
+            wrapped_token_id,
+        )?)?),
+        QueryMsg::GetWrappedNftCount {} => Ok(encode_binary(&query_wrapped_nft_count(deps)?)?),
+        QueryMsg::GetWrappedNftAddress {} => Ok(encode_binary(&query_wrapped_nft_address(deps)?)?),
         QueryMsg::GetAuthorizedTokenAddresses {} => {
             Ok(encode_binary(&query_authorized_token_addresses(deps)?)?)
-        },
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
 pub fn query_origin_cw721(
-    deps: Deps, 
-    wrapped_token: AndrAddr, 
-    wrapped_token_id: String
+    deps: Deps,
+    wrapped_token: AndrAddr,
+    wrapped_token_id: String,
 ) -> Result<OriginCw721InfoResponse, ContractError> {
-    let wrapped_id = (&wrapped_token.get_raw_address(&deps)?, wrapped_token_id.as_str());
+    let wrapped_id = (
+        &wrapped_token.get_raw_address(&deps)?,
+        wrapped_token_id.as_str(),
+    );
     let origin_info = ORIGIN_INFO
-    .load(deps.storage, wrapped_id)
-    .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
+        .load(deps.storage, wrapped_id)
+        .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
 
     Ok(OriginCw721InfoResponse {
         origin_token: origin_info.origin_token,
@@ -333,14 +342,17 @@ pub fn query_origin_cw721(
 }
 
 pub fn query_wrapped_cw721(
-    deps: Deps, 
-    origin_token: AndrAddr, 
-    origin_token_id: String
+    deps: Deps,
+    origin_token: AndrAddr,
+    origin_token_id: String,
 ) -> Result<WrappedCw721InfoResponse, ContractError> {
-    let origin_id = (&origin_token.get_raw_address(&deps)?, origin_token_id.as_str());
+    let origin_id = (
+        &origin_token.get_raw_address(&deps)?,
+        origin_token_id.as_str(),
+    );
     let wrapped_info = WRAPPED_INFO
-    .load(deps.storage, origin_id)
-    .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
+        .load(deps.storage, origin_id)
+        .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
 
     Ok(WrappedCw721InfoResponse {
         wrapped_token: wrapped_info.wrapped_token,
@@ -349,14 +361,17 @@ pub fn query_wrapped_cw721(
 }
 
 pub fn query_is_unwrappable(
-    deps: Deps, 
-    wrapped_token: AndrAddr, 
-    wrapped_token_id: String
+    deps: Deps,
+    wrapped_token: AndrAddr,
+    wrapped_token_id: String,
 ) -> Result<bool, ContractError> {
-    let wrapped_id = (&wrapped_token.get_raw_address(&deps)?, wrapped_token_id.as_str());
+    let wrapped_id = (
+        &wrapped_token.get_raw_address(&deps)?,
+        wrapped_token_id.as_str(),
+    );
     let origin_info = ORIGIN_INFO
-    .load(deps.storage, wrapped_id)
-    .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
+        .load(deps.storage, wrapped_id)
+        .map_err(|_| ContractError::TokenNotWrappedByThisContract {})?;
 
     Ok(origin_info.unwrappable)
 }
@@ -366,17 +381,19 @@ pub fn query_wrapped_nft_count(deps: Deps) -> Result<u64, ContractError> {
     Ok(wrapped_nft_count)
 }
 
-pub fn query_wrapped_nft_address(deps: Deps)  -> Result<AndrAddr, ContractError> {
+pub fn query_wrapped_nft_address(deps: Deps) -> Result<AndrAddr, ContractError> {
     let wrapped_nft_address = WRAPPED_NFT_ADDRESS.load(deps.storage)?;
     Ok(wrapped_nft_address)
 }
 
-pub fn query_authorized_token_addresses(deps: Deps) -> Result<Option<Vec<AndrAddr>>, ContractError> {
+pub fn query_authorized_token_addresses(
+    deps: Deps,
+) -> Result<Option<Vec<AndrAddr>>, ContractError> {
     let authorized_token_addresses = AUTHORIED_TOKEN_ADDRESSES.may_load(deps.storage)?;
     Ok(authorized_token_addresses)
 }
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
 }
