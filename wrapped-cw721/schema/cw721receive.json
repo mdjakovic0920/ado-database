@@ -11,19 +11,21 @@
         "mint_wrapped_nft": {
           "type": "object",
           "required": [
-            "sender",
-            "unwrappable",
-            "wrapped_token_owner"
+            "unwrappable"
           ],
           "properties": {
-            "sender": {
-              "$ref": "#/definitions/AndrAddr"
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/AndrAddr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "unwrappable": {
               "type": "boolean"
-            },
-            "wrapped_token_owner": {
-              "type": "string"
             }
           },
           "additionalProperties": false
